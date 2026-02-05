@@ -16,17 +16,8 @@
 
     <style>
         
-        * { 
-    -webkit-user-select: none; 
-    user-select: none; 
-}
-input, textarea { 
-    -webkit-user-select: text; 
-    user-select: text; 
-}
-        
         /* CSS UNTUK LOGIN & GEMBOK */
-.modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(5px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 20px; }
 .modal-bg.active { display: flex; }
 .btn-auth-full { width: 100%; padding: 16px; border-radius: 18px; border: none; background: var(--primary); color: white; font-weight: 800; cursor: pointer; font-size: 0.9rem; transition: 0.3s; }
 .btn-auth-full:active { transform: scale(0.98); opacity: 0.9; }
@@ -53,8 +44,41 @@ input, textarea {
             --nav-h: 75px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Plus Jakarta Sans', sans-serif; }
-        body { background: var(--bg); color: var(--text); overflow-x: hidden; padding-bottom: calc(var(--nav-h) + 20px); }
+       * { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent; 
+    font-family: 'Plus Jakarta Sans', sans-serif; 
+}
+
+body { 
+    background: var(--bg); 
+    color: var(--text); 
+    overflow-x: hidden; 
+    padding-bottom: calc(var(--nav-h) + 20px); 
+    
+    /* Proteksi Aplikasi */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none; /* Mencegah menu klik kanan/copy di Android */
+    user-select: none;
+    overscroll-behavior-y: contain;
+    touch-action: pan-x pan-y; /* Mencegah zoom cubit (pinch zoom) */
+}
+
+/* Biarkan input teks tetap berfungsi normal */
+input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+
+/* Pastikan input teks tetap bisa digunakan */
+input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
 
         .header { background: var(--surface); padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
         .header h1 { font-size: 18px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 8px; }
@@ -108,7 +132,7 @@ input, textarea {
         .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-bg.active { display: flex; }
         #modal-confirm {
-    z-index: 1000 !important;
+    z-index: 3000 !important;
 }
         .modal { background: var(--surface); width: 100%; border-radius: 25px; padding: 25px; max-height: 90vh; overflow-y: auto; }
 
@@ -184,13 +208,7 @@ input, textarea {
     border-top: 1px solid #e2e8f0;
 }
 
-#notification {
-        z-index: 9999;
-    }
 
-    input:focus, select:focus {
-        z-index: 5;
-    }
     </style>
 </head>
 <body>
@@ -524,38 +542,30 @@ input, textarea {
         };
 
         // BLUETOOTH PRINTER LOGIC
-       async function btConnect() {
-    // 1. Panggil Java Bridge
-    if (window.AndroidInterface) {
+        async function btConnect() {
+    // 1. Pastikan Bluetooth Aktif via Java
+    if (window.AndroidInterface && window.AndroidInterface.turnOnBluetooth) {
         window.AndroidInterface.turnOnBluetooth();
+        // Beri jeda sedikit agar sistem Android punya waktu menyalakan hardware
+        await new Promise(r => setTimeout(r, 500));
     }
 
-    // 2. Tutup modal yang mungkin sedang terbuka agar tidak menutupi layar
-    // Ini sering jadi penyebab dialog scanning "tersembunyi" di bawah modal
-    closeModal(); 
-
-    if (!navigator.bluetooth) {
-        showMessage("Bluetooth diblokir sistem. Cek Izin & GPS!");
-        return;
-    }
-
+    // 2. Jalankan pairing (Hanya jalan jika WebView mendukung Web Bluetooth)
     try {
-        showMessage("Membuka daftar perangkat...");
         const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true, 
-            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] 
+            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }],
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
         });
-        
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
         app.printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
         app.printDevice = device;
-        
         document.getElementById('btn-printer').style.color = 'var(--success)';
-        showMessage("Printer Terhubung: " + device.name);
+        showMessage("Printer Terhubung!");
     } catch (e) {
         console.error(e);
-        if(e.name !== 'NotFoundError') showMessage("Koneksi Gagal/Dibatalkan");
+        // Tampilkan pesan yang lebih edukatif untuk user APK
+        showMessage("Klik 'Izinkan' atau hubungkan via setelan Bluetooth HP");
     }
 }
 
@@ -1286,18 +1296,30 @@ async function deleteTx() {
     );
 }
 
- function downloadJPG() {
+  function downloadJPG() {
     const area = document.getElementById('invoice-capture-area');
+    const invoiceNum = (app.currentTx && app.currentTx.invoice) ? app.currentTx.invoice : "Nota";
+    
+    showMessage("Sedang memproses gambar...");
+    
     html2canvas(area, {
-        scale: 3, // Ubah dari 8 ke 3 agar HP gak berat
+        scale: 4, 
         useCORS: true,
         logging: false,
         backgroundColor: "#FFFFFF"
     }).then(canvas => {
-        const l = document.createElement('a');
-        l.download = `Nota-${app.currentTx.invoice}.jpg`;
-        l.href = canvas.toDataURL("image/jpeg", 0.9);
-        l.click(); // Ini akan ditangkap oleh DownloadListener di Java
+        const imageData = canvas.toDataURL("image/jpeg", 0.9);
+        
+        // Panggil Java Interface "AndroidInterface"
+        if (window.AndroidInterface && window.AndroidInterface.saveImageToGallery) {
+            window.AndroidInterface.saveImageToGallery(imageData, `Nota-${invoiceNum}.jpg`);
+        } else {
+            // Fallback untuk testing di browser Chrome PC
+            const l = document.createElement('a');
+            l.download = `Nota-${invoiceNum}.jpg`;
+            l.href = imageData;
+            l.click();
+        }
     });
 }
 
@@ -1676,3 +1698,5 @@ window.onload = async () => {
 </script>
 </body>
 </html>
+
+
