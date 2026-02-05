@@ -1,7 +1,6 @@
-package com.sukaadmin.app;
+package com.sukakasir.app;
 
 import android.Manifest;
-import android.app.DownloadManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -11,7 +10,7 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.util.Base64;
 import android.webkit.DownloadListener;
-import android.webkit.URLUtil;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -32,27 +31,28 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mintaIzinPenyimpanan();
+        mintaIzinDulu();
 
         webView = findViewById(R.id.webview_compontent);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(true);
-
+        settings.setAllowContentAccess(true);
+        
+        // PENTING: WebChromeClient mengaktifkan fitur Bluetooth & Pop-up di HTML
+        webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient());
 
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                // LOGIKA ANTI-GAGAL UNTUK BASE64 (JPEG & SHEET)
                 if (url.startsWith("data:")) {
-                    simpanFileBase64(url, mimetype);
+                    simpanBase64(url, mimetype);
                 } else {
-                    // Logika untuk WhatsApp atau Link Standar
                     try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        startActivity(intent);
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(i);
                     } catch (Exception e) {
                         Toast.makeText(MainActivity.this, "Gagal membuka link", Toast.LENGTH_SHORT).show();
                     }
@@ -63,45 +63,37 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    private void simpanFileBase64(String dataUrl, String mimeType) {
+    private void simpanBase64(String dataUrl, String mimeType) {
         try {
-            // Ekstrak data base64
             String base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
             byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
-            
-            // Tentukan ekstensi file
-            String extension = mimeType.contains("csv") ? ".csv" : ".jpg";
-            String fileName = "Laporan_SukaAdmin_" + System.currentTimeMillis() + extension;
-            
+            String ext = mimeType.contains("csv") ? ".csv" : ".jpg";
+            String name = "Nota_Kasir_" + System.currentTimeMillis() + ext;
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File file = new File(path, fileName);
-            
+            File file = new File(path, name);
             OutputStream os = new FileOutputStream(file);
             os.write(fileBytes);
             os.close();
-            
-            Toast.makeText(this, "Berhasil! Cek folder Download: " + fileName, Toast.LENGTH_LONG).show();
-            
-            // Beritahu sistem agar file muncul di Galeri/File Manager
-            Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intent.setData(Uri.fromFile(file));
-            sendBroadcast(intent);
-            
+            Toast.makeText(this, "Berhasil! Cek folder Download", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
-            Toast.makeText(this, "Gagal simpan file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Gagal simpan file", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void mintaIzinPenyimpanan() {
+    private void mintaIzinDulu() {
+        String[] perms;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            perms = new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION};
+        } else {
+            perms = new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION};
+        }
+        ActivityCompat.requestPermissions(this, perms, 1);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                Intent it = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                it.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(it);
             }
         }
     }
