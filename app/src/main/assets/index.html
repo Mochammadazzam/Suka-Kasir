@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Suka Laundry Pro - Master Stable</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        
+        /* CSS UNTUK LOGIN & GEMBOK */
+.modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(5px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-bg.active { display: flex; }
+.btn-auth-full { width: 100%; padding: 16px; border-radius: 18px; border: none; background: var(--primary); color: white; font-weight: 800; cursor: pointer; font-size: 0.9rem; transition: 0.3s; }
+.btn-auth-full:active { transform: scale(0.98); opacity: 0.9; }
+.hidden { display: none !important; }
+
+/* Style Tombol Refresh pada Gembok */
+.btn-refresh-lock { position: absolute; top: -5px; right: -15px; background: #0EA5E9; color: white; border: none; width: 42px; height: 42px; border-radius: 50%; box-shadow: 0 4px 12px rgba(14,165,233,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; transition: 0.3s; }
+.btn-refresh-lock:active { transform: rotate(180deg); }
+
+
+        :root {
+            --primary: #0EA5E9;
+            --primary-dark: #0369A1;
+            --primary-soft: #F0F9FF;
+            --bg: #F8FAFC;
+            --surface: #FFFFFF;
+            --text: #0F172A;
+            --text-light: #64748B;
+            --border: #E2E8F0;
+            --danger: #EF4444;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --radius: 20px;
+            --nav-h: 75px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text); overflow-x: hidden; padding-bottom: calc(var(--nav-h) + 20px); }
+
+        .header { background: var(--surface); padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 18px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); height: var(--nav-h); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border); z-index: 1000; box-shadow: 0 -4px 10px rgba(0,0,0,0.03); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-light); text-decoration: none; gap: 4px; transition: 0.2s; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .nav-item i { font-size: 20px; }
+        .nav-item.active { color: var(--primary); }
+
+        .page { display: none; padding: 20px; animation: fadeIn 0.2s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--surface); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 15px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-light); }
+        input, select, textarea { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); font-size: 14px; outline: none; transition: 0.2s; background: var(--bg); color: var(--text); }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light); }
+        .search-box input { padding-left: 45px; background: var(--surface); }
+
+        .btn { padding: 14px 20px; border-radius: 15px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; font-size: 14px; width: 100%; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: var(--primary-soft); color: var(--primary); }
+        .btn-dark { background: var(--text); color: white; }
+        .btn-danger-soft { background: #FEE2E2; color: var(--danger); }
+        .btn-success-soft { background: #DCFCE7; color: var(--success); }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); padding: 18px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
+        .stat-card:active { transform: scale(0.96); }
+        .stat-card small { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
+        .stat-card h2 { font-size: 16px; font-weight: 800; margin-top: 4px; }
+
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .service-item { background: var(--surface); padding: 15px; border-radius: 18px; border: 1px solid var(--border); text-align: center; cursor: pointer; transition: 0.2s; }
+        .service-item:active { transform: scale(0.95); background: var(--primary-soft); }
+        .service-item i { font-size: 24px; color: var(--primary); margin-bottom: 8px; }
+
+        .list-item { background: var(--surface); border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border: 1px solid var(--border); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .badge-lunas { background: #DCFCE7; color: #15803D; }
+        .badge-belum-dibayar { background: #FEE2E2; color: #B91C1C; }
+
+        .floating-cart { position: fixed; bottom: 85px; left: 20px; right: 20px; background: var(--surface); padding: 20px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 900; border: 1px solid var(--border); display: none; }
+        
+        .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
+        .modal-bg.active { display: flex; }
+        #modal-confirm {
+    z-index: 3000 !important;
+}
+        .modal { background: var(--surface); width: 100%; border-radius: 25px; padding: 25px; max-height: 90vh; overflow-y: auto; }
+
+        #notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #1E293B; color: white; padding: 12px 24px; border-radius: 50px; font-weight: 600; z-index: 9999; transition: 0.5s; }
+        #notification.show { transform: translateX(-50%) translateY(0); }
+
+        .pill-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 15px; scrollbar-width: none; }
+        .pill { padding: 8px 16px; border-radius: 50px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; color: var(--text-light); transition: 0.2s; }
+        .pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .invoice-title { font-size: 24px; font-weight: 800; text-align: center; margin: 10px 0; }
+        .status-stamp { border: 3px solid; padding: 8px 15px; border-radius: 8px; font-weight: 900; display: inline-block; transform: rotate(-5deg); margin: 15px 0; text-transform: uppercase; }
+
+        .summary-bar { background: var(--primary-soft); padding: 12px 20px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border: 1px solid var(--primary); color: var(--primary-dark); }
+        .summary-bar b { font-size: 15px; }
+
+        /* Print Preview Style */
+        .preview-thermal { 
+            background: #fff; 
+            color: #000; 
+            padding: 20px; 
+            font-family: 'Courier New', Courier, monospace; 
+            border: 1px solid #ccc; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+       
+       /* Container utama untuk preview nota*/
+#modal-invoice .modal {
+    background: #f1f5f9; /* Background luar nota sedikit abu-abu agar nota putihnya menonjol */
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Wadah Luar agar tombol naik ke atas */
+.invoice-viewer-container {
+    background: #f1f5f9;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden; /* Biar nota yang besar tidak merusak layout */
+    height: auto;
+    min-height: 300px;
+}
+
+#invoice-capture-area {
+    background: #FFFFFF;
+    padding: 20px 20px;
+    width: 500px; 
+    transform: scale(0.60); /*preview*/
+    transform-origin: top center; 
+    margin-bottom: -250px; /* Menarik tombol di bawahnya agar naik */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+
+#modal-invoice .modal {
+    max-width: 500px;
+    border-radius: 25px;
+}
+
+/* Area Khusus Tombol (Di luar area foto) */
+.invoice-actions {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+}
+
+
+    </style>
+</head>
+<body>
+<div id="p-login" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:white; padding:30px; border-radius:30px; width:100%; max-width:350px; box-shadow:0 10px 25px rgba(0,0,0,0.05); text-align:center;">
+        
+        <div style="width:60px; height:60px; background:var(--primary); color:white; border-radius:20px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:1.5rem;">
+            <i class="fas fa-cash-register"></i>
+        </div>
+
+        <h2 id="auth-title" style="font-weight:800; color:var(--text); margin-bottom:5px;">Masuk Kasir</h2>
+        <p id="auth-desc" style="font-size:0.75rem; color:var(--text-light); margin-bottom:25px;">Masukkan Nama Bisnis & WA yang sama.</p>
+        
+        <input type="text" id="reg-name" placeholder="Nama Bisnis / Owner" style="width:100%; padding:15px; border-radius:15px; border:1px solid var(--border); margin-bottom:12px; font-size:0.9rem; outline:none; font-weight:600;">
+        
+        <div style="display:flex; align-items:center; background:white; border:1px solid var(--border); border-radius:15px; padding-left:15px; margin-bottom:20px;">
+            <span style="font-weight:800; color:var(--text);">+62</span>
+            <input type="number" id="reg-phone" oninput="cekNomerAdmin(this)" placeholder="812345xxx" style="flex:1; padding:15px; border:none; border-radius:15px; font-size:0.9rem; outline:none; font-weight:600;">
+        </div> 
+
+        <button onclick="prosesAuth()" id="btn-auth" class="btn-auth-full">MASUK KASIR</button>
+        
+        <p id="auth-switch" style="font-size:0.8rem; margin-top:20px; color:var(--text-light);">
+            Belum punya akun? <a href="javascript:void(0)" onclick="toggleAuthMode('reg')" style="color:var(--primary); font-weight:800; text-decoration:none;">Daftar Baru</a>
+        </p>
+    </div>
+</div>
+<div id="remote-notif-overlay" class="modal-bg">
+    <div class="modal" style="background: white; width: 100%; max-width: 400px; border-radius: 25px; padding: 25px; text-align: center;">
+        <i class="fas fa-bell" style="font-size: 2.5rem; color: var(--warning); margin-bottom: 15px;"></i>
+        <h2 style="font-weight:800; margin-bottom:10px;">Pengingat Lisensi</h2>
+        <p id="remote-notif-msg" style="font-size:0.85rem; color:var(--text-light); margin-bottom:25px; line-height:1.6;"></p>
+        <button onclick="closeRemoteNotif()" class="btn-auth-full">SAYA MENGERTI</button>
+    </div>
+</div>
+
+
+
+    <div id="notification">Pesan</div>
+
+    <header class="header">
+        <h1><i class="fas fa-soap"></i> <span id="header-brand-name">Suka Laundry</span></h1>
+        <button id="btn-printer" onclick="btConnect()" style="width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text-light); transition: 0.3s;">
+            <i class="fas fa-print"></i>
+        </button>
+    </header>
+
+    <!-- PAGE HOME -->
+    <div id="page-home" class="page active">
+        <div class="pill-filters" id="home-filters">
+            <div class="pill active" data-filter="today" onclick="setHomeFilter('today')">Hari Ini</div>
+            <div class="pill" data-filter="yesterday" onclick="setHomeFilter('yesterday')">Kemarin</div>
+            <div class="pill" data-filter="month" onclick="setHomeFilter('month')">Bulan Ini</div>
+            <input type="date" id="home-date-custom" class="pill" style="width: auto; height: 35px;" onchange="setHomeFilter('custom')">
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card" onclick="goToPiutang()">
+                <small>Piutang Member</small>
+                <h2 id="stat-piutang" style="color: var(--danger);">Rp 0</h2>
+            </div>
+            <div class="stat-card" onclick="goToFilteredTransactions()">
+                <small>Omset</small>
+                <h2 id="stat-omset">Rp 0</h2>
+            </div>
+            <div class="stat-card" onclick="showPage('members')">
+                <small>Jumlah Member</small>
+                <h2 id="stat-members">0</h2>
+            </div>
+            <div class="stat-card" onclick="openLeaderboard()">
+                <small>Loyalitas</small>
+                <h2 style="font-size: 13px; color: var(--primary);">Peringkat <i class="fas fa-crown"></i></h2>
+            </div>
+        </div>
+        <div class="section-title">
+            <span><i class="fas fa-history"></i> Transaksi Terbaru</span>
+            <button class="btn btn-outline" style="width:auto; padding:5px 10px; font-size:11px;" onclick="showPage('transactions')">Lihat Semua</button>
+        </div>
+        <div id="home-recent-list"></div>
+    </div>
+
+    <!-- PAGE KASIR -->
+    <div id="page-pos" class="page">
+        <div class="section-title">Informasi Pesanan</div>
+        <div class="card">
+            <div class="input-group">
+                <label>Pilih Pelanggan (Wajib)</label>
+                <select id="pos-member-id"></select>
+            </div>
+            <div class="input-group">
+                <label>Catatan Pesanan</label>
+                <input type="text" id="pos-note" placeholder="Contoh: Parfum Lily, Cuci Kering">
+            </div>
+            <button class="btn btn-outline" onclick="openModal('manual')"><i class="fas fa-keyboard"></i> Jasa Bebas / Manual</button>
+        </div>
+        <div class="section-title">Pilih Jasa</div>
+        <div id="pos-services-grid" class="service-grid"></div>
+    </div>
+
+    <!-- PAGE RIWAYAT -->
+    <div id="page-transactions" class="page">
+        <div class="section-title">Riwayat Transaksi</div>
+        
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="hist-search" placeholder="Cari..." oninput="renderHistory()">
+        </div>
+
+        <div class="pill-filters" id="hist-filters-status">
+            <div class="pill active" data-val="ALL" onclick="setHistoryFilter('status', 'ALL')">Semua</div>
+            <div class="pill" data-val="LUNAS" onclick="setHistoryFilter('status', 'LUNAS')">Lunas</div>
+            <div class="pill" data-val="BELUM DIBAYAR" onclick="setHistoryFilter('status', 'BELUM DIBAYAR')">Belum Dibayar</div>
+        </div>
+        <div class="pill-filters" id="hist-filters-day">
+            <div class="pill active" data-val="ALL" onclick="setHistoryFilter('day', 'ALL')">Semua Hari</div>
+            <div class="pill" data-val="TODAY" onclick="setHistoryFilter('day', 'TODAY')">Hari Ini</div>
+        </div>
+        <div class="card" style="padding: 15px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="input-group" style="margin:0;"><label>Bulan</label><select id="hist-month" onchange="renderHistory()"><option value="all">Semua</option><option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option><option value="3">April</option><option value="4">Mei</option><option value="5">Juni</option><option value="6">Juli</option><option value="7">Agustus</option><option value="8">September</option><option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option></select></div>
+                <div class="input-group" style="margin:0;"><label>Tahun</label><select id="hist-year" onchange="renderHistory()"></select></div>
+            </div>
+        </div>
+
+        <div id="history-summary" class="summary-bar" style="display: none;">
+            <span>Terpilih: <b id="hist-count">0</b> Tx</span>
+            <span>Total: <b id="hist-total">Rp 0</b></span>
+        </div>
+
+        <div id="history-list" style="margin-bottom: 80px;"></div>
+    </div>
+
+    <!-- PAGE MEMBER -->
+    <div id="page-members" class="page">
+        <div class="section-title">Member</div>
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="member-search" placeholder="Cari Nama Member..." oninput="renderMembers()">
+        </div>
+        <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="openAddMemberModal()"><i class="fas fa-plus"></i> Tambah Member</button>
+        <div id="member-list"></div>
+    </div>
+
+    <!-- PAGE MENU -->
+    <div id="page-services" class="page">
+        <div class="section-title">Menu Layanan</div>
+        <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="openModal('service')"><i class="fas fa-plus"></i> Tambah Jasa</button>
+        <div id="service-list"></div>
+    </div>
+
+    <!-- PAGE SETTINGS -->
+    <div id="page-settings" class="page">
+        <div class="section-title">Pengaturan Toko</div>
+        <div class="card">
+            <div class="input-group"><label>Nama Laundry</label><input type="text" id="st-name" oninput="updateSettingPreview()"></div>
+            <div class="input-group"><label>Alamat</label><input type="text" id="st-address" oninput="updateSettingPreview()"></div>
+            <div class="input-group"><label>WhatsApp</label><input type="text" id="st-phone" oninput="updateSettingPreview()"></div>
+            <button class="btn btn-primary" onclick="saveSettings()">Simpan Profil</button>
+        </div>
+
+        <div class="section-title">Preview Nota</div>
+        <div class="card" style="background: #e2e8f0; text-align: center;">
+            <div class="preview-thermal" id="setting-print-preview"></div>
+        </div>
+
+        <div class="section-title">Database</div>
+        <button class="btn btn-danger-soft" onclick="triggerResetDatabase()"><i class="fas fa-trash"></i> Reset Seluruh Transaksi</button>
+    </div>
+
+    <!-- MODAL MEMBER -->
+    <div id="modal-member" class="modal-bg">
+        <div class="modal">
+            <h3 id="m-title">Member Baru</h3><br>
+            <input type="hidden" id="m-id">
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-outline" onclick="getContact()"><i class="fas fa-address-book"></i> Ambil dari Kontak</button>
+            </div>
+            <div class="input-group"><label>Nama Lengkap</label><input type="text" id="m-name" oninput="syncReferral(this.value)"></div>
+            <div class="input-group"><label>WhatsApp (0 -> +62)</label><input type="text" id="m-phone" oninput="formatWhatsApp(this)"></div>
+            <div class="input-group"><label>Alamat</label><input type="text" id="m-address"></div>
+            <div class="input-group">
+                <label>Referral Baru (Otomatis)</label>
+                <input type="text" id="m-ref-self" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 600;">
+            </div>
+            <div class="input-group"><label>Referral Pengajak (Opsional)</label>
+            <select id="m-ref-from" style="width: 100%; padding: 12px; border: 1px solid #E2E8F0; border-radius: 8px; margin-top: 8px;">
+    <option value="">Pilih Pengajak (Opsional)</option>
+</select>
+                <datalist id="ref-list"></datalist>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+                <button class="btn btn-primary" onclick="actionAddMember()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MENU -->
+    <div id="modal-service" class="modal-bg">
+        <div class="modal">
+            <h3 id="s-title">Layanan Baru</h3><br>
+            <input type="hidden" id="s-id">
+            <div class="input-group"><label>Nama Jasa</label><input type="text" id="s-name"></div>
+            <div class="input-group"><label>Harga Per Satuan</label><input type="number" id="s-price"></div>
+            <div class="input-group"><label>Satuan</label><select id="s-unit"><option value="Kg">Kg</option><option value="Pcs">Pcs</option></select></div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+                <button class="btn btn-primary" onclick="actionAddService()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MANUAL -->
+    <div id="modal-manual" class="modal-bg">
+        <div class="modal">
+            <h3>Jasa Bebas</h3><br>
+            <div class="input-group"><label>Nama Jasa</label><input type="text" id="x-name" placeholder="Misal: Karpet Jumbo"></div>
+            <div class="input-group"><label>Harga Per Satuan</label><input type="number" id="x-price"></div>
+            <div class="input-group"><label>Satuan</label><select id="x-unit"><option value="Kg">Kg</option><option value="Pcs">Pcs</option></select></div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+                <button class="btn btn-primary" onclick="actionAddManual()">Tambah</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VERIFIKASI -->
+    <div id="modal-verify-tx" class="modal-bg">
+        <div class="modal" style="text-align: center;">
+            <i class="fas fa-check-circle" style="font-size: 50px; color: var(--primary); margin-bottom: 20px;"></i>
+            <h3>Konfirmasi Transaksi</h3>
+            <p style="color: var(--text-light); margin: 15px 0;">Simpan transaksi ini ke database?</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+                <button class="btn btn-primary" id="btn-final-confirm">Ya, Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LEADERBOARD -->
+    <div id="modal-leaderboard" class="modal-bg">
+        <div class="modal">
+            <h3 style="text-align: center;">🏆 Peringkat Loyalitas</h3>
+            <p style="text-align: center; font-size: 11px; color: var(--text-light); margin-bottom: 15px;">Klik Nama untuk Riwayat Lengkap</p>
+            <div id="leaderboard-list"></div><br>
+            <button class="btn btn-primary" onclick="closeModal()">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL INVOICE -->
+        <div id="modal-confirm" class="modal-bg">
+    <div class="modal" style="text-align: center;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 50px; color: var(--warning); margin-bottom: 20px;"></i>
+        <h3 id="confirm-title">Konfirmasi</h3>
+        <p id="confirm-msg" style="color: var(--text-light); margin: 15px 0;"></p>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+            <button class="btn btn-primary" id="btn-confirm-action">Ya, Lanjutkan</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-invoice" class="modal-bg">
+    <div class="modal" style="padding: 0; background: white; overflow: hidden; max-width: 450px;">
+        
+        <div class="invoice-viewer-container">
+            <div id="invoice-capture-area">
+                <div id="invoice-content" style="background: white;"></div>
+            </div>
+        </div>
+
+        <div style="padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #eee; background: white; position: relative; z-index: 10;">
+            <button class="btn btn-dark" onclick="printThermalInvoice()"><i class="fas fa-print"></i> Cetak</button>
+            <button class="btn btn-primary" onclick="downloadJPG()"><i class="fas fa-download"></i> Simpan JPG</button>
+            <button class="btn btn-success-soft" onclick="shareWA()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+            <button class="btn btn-outline" onclick="updateTxStatus()"><i class="fas fa-check"></i> Jadi Lunas</button>
+            <button class="btn btn-danger-soft" onclick="deleteTx()" style="grid-column: span 2;"><i class="fas fa-trash"></i> Hapus Nota</button>
+            <button class="btn btn-outline" onclick="closeModal()" style="grid-column: span 2; margin-top: 5px;">Tutup</button>
+        </div>
+
+    </div>
+</div>
+
+
+
+    <!-- CART POPUP -->
+    <div id="pos-floating-cart" class="floating-cart">
+        <div id="cart-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-top:1px dashed #eee; padding-top:10px;">
+            <div><small>TOTAL TAGIHAN</small><h2 id="cart-total" style="color:var(--primary);">Rp 0</h2></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-primary" onclick="verifyAndProcess('LUNAS')">BAYAR LUNAS</button>
+            <button class="btn btn-dark" onclick="verifyAndProcess('BELUM DIBAYAR')">BELUM DIBAYAR</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="hideCart()">Tambah Lagi</button>
+                <button class="btn btn-danger-soft" onclick="resetCart()">Batalkan Semua</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav-bar">
+        <a class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="fas fa-home"></i><span>Home</span></a>
+        <a class="nav-item" id="nav-pos" onclick="showPage('pos')"><i class="fas fa-cash-register"></i><span>Kasir</span></a>
+        <a class="nav-item" id="nav-transactions" onclick="showPage('transactions')"><i class="fas fa-history"></i><span>Riwayat</span></a>
+        <a class="nav-item" id="nav-members" onclick="showPage('members')"><i class="fas fa-users"></i><span>Member</span></a>
+        <a class="nav-item" id="nav-services" onclick="showPage('services')"><i class="fas fa-list-ul"></i><span>Menu</span></a>
+        <a class="nav-item" id="nav-settings" onclick="showPage('settings')"><i class="fas fa-cog"></i><span>Setting</span></a>
+    </nav>
+
+    <script>
+                const firebaseConfig = {
+          apiKey: "AIzaSyA8Vt7F98KgZA0w4uU4G856rnULyiDnhDE",
+          authDomain: "suka-laundry.firebaseapp.com",
+          projectId: "suka-laundry",
+          storageBucket: "suka-laundry.firebasestorage.app",
+          messagingSenderId: "23088092602",
+          appId: "1:23088092602:web:aa959bb4d54dfb06a8b983"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const APP_ID = "sukalaundry";
+
+
+        let app = {
+            members: [], services: [], transactions: [], cart: [],
+            settings: { name: "Suka Laundry", address: "Alamat Toko", phone: "08", footer: "Terima Kasih" },
+            homeFilter: 'today', histFilterStatus: 'ALL', histFilterDay: 'ALL', currentTx: null,
+            printDevice: null, printCharacteristic: null, memberSpecificFilter: null
+        };
+
+        // BLUETOOTH PRINTER LOGIC
+        async function btConnect() {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }],
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                app.printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+                app.printDevice = device;
+                document.getElementById('btn-printer').style.color = 'var(--success)';
+                showMessage("Printer Terhubung!");
+            } catch (e) {
+                console.error(e);
+                showMessage("Koneksi Gagal/Dibatalkan");
+            }
+        }
+
+        async function printThermal(text) {
+            if (!app.printCharacteristic) return showMessage("Printer belum terhubung!");
+            const encoder = new TextEncoder();
+            const chunks = text.match(/.{1,20}/g) || [];
+            for (const chunk of chunks) {
+                await app.printCharacteristic.writeValue(encoder.encode(chunk));
+            }
+        }
+
+      async function printThermalInvoice() {
+    // 1. Validasi data dan koneksi
+    if (!app.currentTx || !app.printCharacteristic) {
+        return showMessage("Printer Belum Terhubung!");
+    }
+
+    try {
+        const t = app.currentTx;
+        const enc = new TextEncoder();
+        
+        // Ambil data profil dari settings
+        const brand = (app.settings.name || 'Suka Laundry').toUpperCase();
+        const addr = app.settings.address || '';
+        const phone = app.settings.phone || '';
+
+        // ESC/POS Commands (Standard & Safe)
+        const init = '\x1B\x40';
+        const center = '\x1B\x61\x01';
+        const left = '\x1B\x61\x00';
+        const normalFont = '\x1B\x21\x00';
+        const boldOn = '\x1B\x45\x01';
+        const boldOff = '\x1B\x45\x00';
+
+        // Susun Text Struk
+        let txt = init + center + normalFont + brand + "\n";
+        if (addr) txt += addr + "\n";
+        if (phone) txt += "WA: " + phone + "\n";
+        txt += "--------------------------------\n" + left;
+        
+        // Info Transaksi
+        const tgl = t.createdAt ? t.createdAt.toDate().toLocaleDateString('id-ID') : '-';
+        txt += "Nota : " + t.invoice + "\n";
+        txt += "Tgl  : " + tgl + "\n";
+        txt += "Plg  : " + t.member.name.toUpperCase() + "\n";
+        txt += "--------------------------------\n";
+        
+        // Looping Items (Layanan)
+        t.items.forEach(i => {
+            let line1 = i.serviceName.substring(0, 32);
+            // Format: "1.0 Kg           Rp4.000" (Total 32 karakter)
+            let qtyStr = i.qty + " " + i.unit;
+            let priceStr = "Rp" + i.subtotal.toLocaleString('id-ID');
+            let spaces = 32 - qtyStr.length - priceStr.length;
+            let line2 = qtyStr + " ".repeat(spaces > 0 ? spaces : 1) + priceStr;
+            txt += line1.toUpperCase() + "\n" + line2 + "\n";
+        });
+        
+        txt += "--------------------------------\n";
+        
+        // Total (Rata Kanan)
+        let totalVal = "Rp " + t.totalPrice.toLocaleString('id-ID');
+        let totalLabel = "TOTAL:";
+        let totalSpaces = 32 - totalLabel.length - totalVal.length;
+        txt += boldOn + totalLabel + " ".repeat(totalSpaces > 0 ? totalSpaces : 1) + totalVal + boldOff + "\n";
+        
+        // Status & Catatan
+        txt += "Status: " + t.status + "\n";
+        if (t.note) {
+            txt += "Catatan: " + t.note + "\n";
+        }
+
+        txt += "--------------------------------\n" + center;
+        txt += "Terima Kasih\n\n\n\n\n"; // Feed kertas agar bisa disobek
+
+        // 2. Proses Pengiriman Data (Metode Chunking sesuai referensi)
+        let data = enc.encode(txt);
+        const CHUNK_SIZE = 20;
+        
+        for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+            let chunk = data.slice(i, i + CHUNK_SIZE);
+            await app.printCharacteristic.writeValue(chunk);
+            // Jeda 20ms agar printer tidak overload (sesuai referensi coding kamu)
+            await new Promise(r => setTimeout(r, 20));
+        }
+        
+        showMessage("Mencetak Struk...");
+    } catch (e) { 
+        console.error(e);
+        showMessage("Printer Error!"); 
+    }
+}
+
+        // REALTIME SYNC
+        function initSync() {
+            db.collection('members').where('appId','==',APP_ID).onSnapshot(snap => {
+                app.members = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderMembers();
+                updateDropdowns();
+            });
+            db.collection('services').where('appId','==',APP_ID).onSnapshot(snap => {
+                app.services = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderServices();
+                updatePOSGrid();
+            });
+            db.collection('transactions').where('appId','==',APP_ID).onSnapshot(snap => {
+                app.transactions = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                renderHome();
+                renderHistory();
+            });
+            db.collection('settings').doc('profile').onSnapshot(d => { if(d.exists) { app.settings = d.data(); applySettings(); updateSettingPreview(); } });
+        }
+
+        // NAVIGATION
+        function showPage(p) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-'+p).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-'+p).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        // UTILS
+        function formatIDR(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
+                function askConfirm(title, msg, action) {
+    const btnAction = document.getElementById('btn-confirm-action');
+    if(!btnAction) return; // Keamanan jika elemen tidak ditemukan
+
+    document.getElementById('confirm-title').innerText = title;
+    document.getElementById('confirm-msg').innerText = msg;
+    
+    btnAction.innerText = "Ya, Lanjutkan";
+    btnAction.disabled = false;
+    btnAction.style.opacity = "1";
+    
+    btnAction.onclick = async () => {
+        btnAction.innerText = "Memproses...";
+        btnAction.disabled = true;
+        btnAction.style.opacity = "0.7";
+        
+        await action();
+        closeModal(); 
+    };
+
+    openModal('confirm');
+}
+
+        function showMessage(m) { const n = document.getElementById('notification'); n.innerText = m; n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 2000); }
+        function closeModal() { document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('active')); }
+        function openModal(m) { document.getElementById('modal-'+m).classList.add('active'); }
+        function isSameDay(d1, d2) { return d1.toDateString() === d2.toDateString(); }
+
+        // POS LOGIC
+        function addToCart(sid) {
+            const s = app.services.find(x => x.id === sid);
+            const ex = app.cart.find(x => x.serviceId === sid);
+            if(ex) { ex.qty++; ex.subtotal = ex.price * ex.qty; }
+            else { app.cart.push({ serviceId: sid, serviceName: s.name, qty: 1, price: s.price, unit: s.unit, subtotal: s.price }); }
+            updateCart();
+        }
+
+                function updateCart() {
+            const float = document.getElementById('pos-floating-cart');
+            const list = document.getElementById('cart-list');
+            if(app.cart.length > 0) {
+                float.style.display = 'block';
+                list.innerHTML = app.cart.map(i => `
+                    <div class="list-item" style="padding:10px; background:var(--bg); border-style:dashed;">
+                        <div style="flex:1"><b>${i.serviceName}</b><br>
+                            <div style="display:flex; align-items:center; gap:5px; margin-top:5px;">
+                                <input type="number" step="any" inputmode="decimal" value="${i.qty}" 
+                                       style="width:80px; padding:8px; font-weight:700; border:1px solid var(--border); border-radius:10px;" 
+                                       oninput="syncQty('${i.serviceId}', this.value)"
+                                       onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 46 || event.charCode == 44">
+                                <small>${i.unit}</small>
+                            </div>
+                        </div>
+                        <div style="text-align:right">
+                            <b id="subtotal-${i.serviceId}">${formatIDR(i.subtotal)}</b><br>
+                            <small onclick="removeFromCart('${i.serviceId}')" style="color:var(--danger); cursor:pointer; font-weight:700;">Hapus</small>
+                        </div>
+                    </div>
+                `).join('');
+                updateGrandTotal();
+            } else float.style.display = 'none';
+        }
+
+
+
+        function syncQty(sid, val) {
+    // 1. Ubah koma ke titik agar bisa diproses sebagai angka desimal
+    let normalizedVal = val.toString().replace(',', '.');
+    
+    // 2. Ubah string ke angka, jika kosong atau bukan angka, anggap 0
+    let v = parseFloat(normalizedVal);
+    if (isNaN(v) || v < 0) v = 0;
+    
+    const item = app.cart.find(x => x.serviceId === sid);
+    if(item) {
+        item.qty = v;
+        item.subtotal = item.price * v;
+        
+        // 3. Update teks subtotal di layar secara real-time
+        const subtotalEl = document.getElementById(`subtotal-${sid}`);
+        if(subtotalEl) subtotalEl.innerText = formatIDR(item.subtotal);
+        
+        // 4. Hitung ulang total belanja keseluruhan
+        updateGrandTotal();
+    }
+}
+
+
+function updateGrandTotal() {
+    const total = app.cart.reduce((s, i) => s + i.subtotal, 0);
+    document.getElementById('cart-total').innerText = formatIDR(total);
+}
+
+
+        function removeFromCart(sid) { app.cart = app.cart.filter(x => x.serviceId !== sid); updateCart(); }
+        function hideCart() { document.getElementById('pos-floating-cart').style.display = 'none'; }
+        function resetCart() { 
+            app.cart = []; 
+            document.getElementById('pos-member-id').value = "";
+            document.getElementById('pos-note').value = "";
+            updateCart(); 
+        }
+
+        function actionAddManual() {
+            const name = document.getElementById('x-name').value;
+            const price = parseFloat(document.getElementById('x-price').value);
+            const unit = document.getElementById('x-unit').value;
+            if(!name || isNaN(price)) return showMessage("Lengkapi data!");
+            app.cart.push({ serviceId: 'm-'+Date.now(), serviceName: name, qty: 1, price: price, unit: unit, subtotal: price });
+            updateCart(); closeModal();
+            document.getElementById('x-name').value = "";
+            document.getElementById('x-price').value = "";
+        }
+
+        function verifyAndProcess(status) {
+            if(!document.getElementById('pos-member-id').value) return showMessage("Pilih Member!");
+            if(app.cart.length === 0) return showMessage("Keranjang Kosong!");
+            openModal('verify-tx');
+            document.getElementById('btn-final-confirm').onclick = () => saveTransaction(status);
+        }
+
+        async function saveTransaction(status) {
+            const m = app.members.find(x => x.id === document.getElementById('pos-member-id').value);
+            const total = app.cart.reduce((s,i) => s + i.subtotal, 0);
+            await db.collection('transactions').add({
+                appId: APP_ID, invoice: 'INV-'+Date.now().toString().slice(-6),
+                member: { id: m.id, name: m.name, whatsapp: m.whatsapp, address: m.address || "" },
+                items: app.cart, totalPrice: total, status,
+                note: document.getElementById('pos-note').value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            resetCart(); closeModal(); showMessage("Transaksi Disimpan!"); showPage('home');
+        }
+
+        // HOME & DASHBOARD ACTIONS
+        function setHomeFilter(f) {
+            app.homeFilter = f;
+            document.querySelectorAll('#home-filters .pill').forEach(el => el.classList.toggle('active', el.dataset.filter === f));
+            renderHome();
+        }
+
+        function renderHome() {
+            const now = new Date();
+            let filtered = app.transactions.filter(t => {
+                const d = t.createdAt ? t.createdAt.toDate() : now;
+                if(app.homeFilter === 'today') return isSameDay(d, now);
+                if(app.homeFilter === 'yesterday') { let y = new Date(); y.setDate(y.getDate()-1); return isSameDay(d, y); }
+                if(app.homeFilter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                if(app.homeFilter === 'custom') { const v = document.getElementById('home-date-custom').value; return v ? isSameDay(d, new Date(v)) : true; }
+                return true;
+            });
+
+            document.getElementById('stat-omset').innerText = formatIDR(filtered.reduce((s,t) => s + t.totalPrice, 0));
+            document.getElementById('stat-piutang').innerText = formatIDR(app.transactions.filter(t => t.status === 'BELUM DIBAYAR').reduce((s,t) => s + t.totalPrice, 0));
+            document.getElementById('stat-members').innerText = app.members.length;
+
+            const list = document.getElementById('home-recent-list');
+            list.innerHTML = "";
+            [...app.transactions].slice(0,3).forEach(t => {
+                const el = document.createElement('div'); el.className = "list-item"; el.onclick = () => previewInvoice(t.id);
+                el.innerHTML = `<div><b>${t.invoice}</b><br><small>${t.member.name}</small></div><div style="text-align:right"><b>${formatIDR(t.totalPrice)}</b><br><span class="badge badge-${t.status.toLowerCase().replace(' ', '-')}">${t.status}</span></div>`;
+                       list.appendChild(el);
+            });
+        }
+
+        function goToPiutang() { showPage('transactions'); setHistoryFilter('status', 'BELUM DIBAYAR'); setHistoryFilter('day', 'ALL'); }
+        
+        function goToFilteredTransactions() { 
+            showPage('transactions'); 
+            setHistoryFilter('status', 'ALL'); 
+            const now = new Date();
+            if(app.homeFilter === 'today') {
+                setHistoryFilter('day', 'TODAY');
+                document.getElementById('hist-month').value = 'all';
+                document.getElementById('hist-year').value = now.getFullYear();
+            } else if(app.homeFilter === 'month') {
+                setHistoryFilter('day', 'ALL');
+                document.getElementById('hist-month').value = now.getMonth();
+                document.getElementById('hist-year').value = now.getFullYear();
+            } else {
+                setHistoryFilter('day', 'ALL');
+                document.getElementById('hist-month').value = 'all';
+            }
+            renderHistory();
+        }
+
+        function openLeaderboard() {
+            const counts = {};
+            app.transactions.forEach(t => { counts[t.member.id] = (counts[t.member.id] || 0) + t.totalPrice; });
+            const sorted = app.members.map(m => ({...m, total: counts[m.id] || 0})).sort((a,b) => b.total - a.total);
+            document.getElementById('leaderboard-list').innerHTML = sorted.map((m,i) => `
+                <div style="display:flex; justify-content:space-between; padding:15px; border-bottom:1px solid #eee; cursor:pointer;" onclick="closeModal(); filterByMember('${m.id}')">
+                    <span>${i+1}. <b>${m.name}</b></span>
+                    <b>${formatIDR(m.total)}</b>
+                </div>
+            `).join('');
+            openModal('leaderboard');
+        }
+
+        function filterByMember(mid) {
+    const member = app.members.find(m => m.id === mid);
+    app.memberSpecificFilter = mid;
+    
+    // Sinkronkan teks pencarian agar user tidak bingung kenapa daftar terfilter
+    const searchInput = document.getElementById('hist-search');
+    if (searchInput && member) {
+        searchInput.value = member.name; 
+    }
+
+    showPage('transactions');
+    setHistoryFilter('status', 'ALL');
+    setHistoryFilter('day', 'ALL');
+    document.getElementById('hist-month').value = 'all';
+    
+    renderHistory();
+    showMessage("Riwayat transaksi: " + (member ? member.name : "Member"));
+}
+
+
+        // HISTORY LOGIC
+        function setHistoryFilter(type, val) {
+            if(type === 'status') {
+                app.histFilterStatus = val;
+                document.querySelectorAll('#hist-filters-status .pill').forEach(el => el.classList.toggle('active', el.dataset.val === val));
+            } else if(type === 'day') {
+                app.histFilterDay = val;
+                document.querySelectorAll('#hist-filters-day .pill').forEach(el => el.classList.toggle('active', el.dataset.val === val));
+            }
+            app.memberSpecificFilter = null; // Reset specific member filter on manual status/day click
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            const m = document.getElementById('hist-month').value;
+            const y = document.getElementById('hist-year').value;
+            const search = document.getElementById('hist-search').value.toLowerCase();
+            const now = new Date();
+            list.innerHTML = "";
+
+                        let data = app.transactions.filter(t => {
+    const d = t.createdAt ? t.createdAt.toDate() : now;
+    const sMatch = app.histFilterStatus === 'ALL' || t.status === app.histFilterStatus;
+    const dMatch = app.histFilterDay === 'ALL' || isSameDay(d, now);
+    
+    // Tetap filter bulan/tahun kecuali kolom search diisi (opsional)
+    const mMatch = search || (m === "all" || d.getMonth().toString() === m);
+    const yMatch = search || (d.getFullYear().toString() === y);
+
+    const qMatch = !search || 
+                   t.invoice.toLowerCase().includes(search) || 
+                   (t.member && t.member.name && t.member.name.toLowerCase().includes(search));
+    
+    const mbMatch = app.memberSpecificFilter ? (t.member && t.member.id === app.memberSpecificFilter) : true;
+    
+    return sMatch && dMatch && mMatch && yMatch && mbMatch && qMatch;
+});
+
+            const totalSum = data.reduce((s, t) => s + t.totalPrice, 0);
+            const countTx = data.length;
+
+            if(countTx > 0) {
+                document.getElementById('history-summary').style.display = 'flex';
+                document.getElementById('hist-count').innerText = countTx;
+                document.getElementById('hist-total').innerText = formatIDR(totalSum);
+            } else {
+                document.getElementById('history-summary').style.display = 'none';
+            }
+
+            data.forEach(t => {
+                const el = document.createElement('div'); el.className = "list-item"; el.onclick = () => previewInvoice(t.id);
+                el.innerHTML = `<div><b>${t.invoice}</b><br><small>${t.member.name}</small></div><div style="text-align:right"><b>${formatIDR(t.totalPrice)}</b><br><span class="badge badge-${t.status.toLowerCase().replace(/\s+/g, '-')}">${t.status}</span></div>`;
+                list.appendChild(el);
+            });
+        }
+
+        // MEMBER & MENU CRUD
+        function formatWhatsApp(i) { if(i.value.startsWith('0')) i.value = '+62' + i.value.substring(1); }
+                async function loadReferrerOptions() {
+            const select = document.getElementById('m-ref-from');
+            try {
+                const snapshot = await db.collection('members').where('appId', '==', APP_ID).get();
+                select.innerHTML = '<option value="">Pilih Pengajak (Opsional)</option>';
+                snapshot.forEach(doc => {
+                    const m = doc.data();
+                    if(m.refSelf) {
+                        const opt = document.createElement('option');
+                        opt.value = m.refSelf;
+                        opt.innerText = m.name + " (" + m.refSelf + ")";
+                        select.appendChild(opt);
+                    }
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function syncReferral(val) { 
+    document.getElementById('m-ref-self').value = val; }
+
+
+                                                          async function loadReferrerOptions() {
+            const select = document.getElementById('m-ref-from');
+            if (!select) return;
+            try {
+                const snapshot = await db.collection('members').where('appId', '==', APP_ID).get();
+                select.innerHTML = '<option value="">Pilih Referral Pengajak (Opsional)</option>';
+                snapshot.forEach(doc => {
+                    const m = doc.data();
+                    if(m.refSelf) {
+                        const opt = document.createElement('option');
+                        opt.value = m.refSelf;
+                        opt.innerText = m.refSelf;
+                        select.appendChild(opt);
+                    }
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function syncReferral(val) { 
+            document.getElementById('m-ref-self').value = val; 
+        }
+
+                                async function openAddMemberModal() {
+            document.getElementById('m-title').innerText = "Member Baru";
+            document.getElementById('m-id').value = "";
+            
+            // Buka kembali kunci kolom
+            document.getElementById('m-name').value = "";
+            document.getElementById('m-name').readOnly = false;
+            document.getElementById('m-name').style.backgroundColor = "white";
+            
+            document.getElementById('m-ref-self').value = "";
+            document.getElementById('m-ref-self').readOnly = false;
+            document.getElementById('m-ref-self').style.backgroundColor = "white";
+
+            document.getElementById('m-phone').value = "";
+            document.getElementById('m-address').value = "";
+            
+            await loadReferrerOptions();
+            document.getElementById('m-ref-from').value = "";
+            openModal('member');
+        }
+
+        async function getContact() {
+            try {
+                const props = ['name', 'tel'];
+                const opts = { multiple: false };
+                const contacts = await navigator.contacts.select(props, opts);
+                if (contacts.length > 0) {
+                    const c = contacts[0];
+                    document.getElementById('m-name').value = c.name[0];
+                    syncReferral(c.name[0]);
+                    if(c.tel && c.tel.length > 0) {
+                        let phone = c.tel[0].replace(/[^0-9]/g, '');
+                        if(phone.startsWith('62')) phone = '+' + phone;
+                        else if(phone.startsWith('0')) phone = '+62' + phone.substring(1);
+                        document.getElementById('m-phone').value = phone;
+                    }
+                }
+            } catch (e) { showMessage("Fitur kontak tidak didukung"); }
+        }
+        
+                async function actionAddMember() {
+    const nameInput = document.getElementById('m-name').value;
+    const wa = document.getElementById('m-phone').value;
+    const addr = document.getElementById('m-address').value;
+    const ref = document.getElementById('m-ref-from').value;
+    const refSelf = document.getElementById('m-ref-self').value;
+    const id = document.getElementById('m-id').value;
+
+    if(!nameInput || !wa) return showMessage("Lengkapi Data!");
+
+    // Normalisasi nama (hapus spasi berlebih)
+    const name = nameInput.trim();
+
+    try {
+        // --- PERBAIKAN B: PROTEKSI NAMA GANDA ---
+        
+        // Hanya cek duplikat jika ini adalah member BARU (id kosong)
+        if (!id) {
+            const checkName = await db.collection('members')
+                .where('appId', '==', APP_ID)
+                .get();
+
+            // Cek apakah ada nama yang sama (case insensitive)
+            const isDuplicate = checkName.docs.some(doc => 
+                doc.data().name.toLowerCase() === name.toLowerCase()
+            );
+
+            if (isDuplicate) {
+                return showMessage("Nama '" + name + "' sudah ada! Tambahkan inisial lain.");
+            }
+        }
+
+        const data = { 
+            appId: APP_ID, 
+            name: name, 
+            whatsapp: wa, 
+            address: addr, 
+            refFrom: ref, 
+            refSelf: refSelf 
+        };
+        
+        if(id) {
+            // Update member lama
+            await db.collection('members').doc(id).update(data);
+        } else {
+            // Simpan member baru
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('members').add(data);
+        }
+        
+        closeModal(); 
+        showMessage("Data Berhasil Disimpan");
+    } catch (e) {
+        showMessage("Gagal menyimpan data");
+        console.error(e);
+    }
+}
+
+      async function editMember(id) {
+            try {
+                const doc = await db.collection('members').doc(id).get();
+                if (!doc.exists) return showMessage("Member tidak ditemukan");
+                const m = doc.data();
+                await loadReferrerOptions(); 
+
+                document.getElementById('m-title').innerText = "Edit Member (Hanya WA,Alamat,&,Referral)";
+                document.getElementById('m-id').value = id;
+                
+                // Isi nama & kunci kolomnya agar tidak bisa diganti
+                document.getElementById('m-name').value = m.name;
+                document.getElementById('m-name').readOnly = true;
+                document.getElementById('m-name').style.backgroundColor = "#f3f4f6";
+                
+                // Isi kode referral & kunci kolomnya
+                document.getElementById('m-ref-self').value = m.refSelf;
+                document.getElementById('m-ref-self').readOnly = true;
+                document.getElementById('m-ref-self').style.backgroundColor = "#f3f4f6";
+
+                // Isi WA dan Alamat (tetap bisa diedit)
+                document.getElementById('m-phone').value = m.whatsapp;
+                document.getElementById('m-address').value = m.address;
+                document.getElementById('m-ref-from').value = m.refFrom || "";
+                
+                openModal('member');
+            } catch (e) {
+                console.error(e);
+                showMessage("Gagal mengambil data");
+            }
+        }
+
+
+                async function deleteMember(id) {
+            askConfirm("Hapus Member", "Hapus member ini permanen?", async () => {
+                await db.collection('members').doc(id).delete();
+                showMessage("Member dihapus");
+            });
+        }
+
+        async function actionAddService() {
+            const name = document.getElementById('s-name').value;
+            const price = parseFloat(document.getElementById('s-price').value);
+            const unit = document.getElementById('s-unit').value;
+            if(!name || isNaN(price)) return showMessage("Data Tidak Valid!");
+            const data = { appId: APP_ID, name, price, unit };
+            const id = document.getElementById('s-id').value;
+            if(id) await db.collection('services').doc(id).update(data);
+            else { data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('services').add(data); }
+            closeModal(); showMessage("Menu Tersimpan");
+        }
+
+        function openEditService(id) {
+            const s = app.services.find(x => x.id === id);
+            document.getElementById('s-title').innerText = "Edit Menu";
+            document.getElementById('s-id').value = s.id;
+            document.getElementById('s-name').value = s.name;
+            document.getElementById('s-price').value = s.price;
+            document.getElementById('s-unit').value = s.unit;
+            openModal('service');
+        }
+
+                                async function deleteService(id) {
+            askConfirm("Hapus Menu", "Hapus layanan ini dari daftar?", async () => {
+                await db.collection('services').doc(id).delete();
+                showMessage("Menu dihapus");
+            });
+        }
+
+
+
+        // INVOICE PREVIEW
+function previewInvoice(id) {
+    const t = app.transactions.find(x => x.id === id); 
+    if(!t) return showMessage("Data tidak ditemukan!");
+    
+    app.currentTx = t; 
+
+    const statusColor = t.status === 'LUNAS' ? '#10B981' : '#EF4444';
+    const tgl = t.createdAt ? t.createdAt.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+
+    document.getElementById('invoice-content').innerHTML = `
+        <div style="width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.1; color: #0F172A;">
+            
+            <div style="text-align: center; border-bottom: 2px dashed #eee; padding-bottom: 10px; margin-bottom: 12px;">
+                <h2 style="font-size: 22px; margin: 0; font-weight: 800;">${app.settings.name}</h2>
+                <p style="font-size: 12px; color: #64748B; margin: 4px 0 0 0;">${app.settings.address}<br>WA: ${app.settings.phone}</p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 15px;">
+                <span style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Pelanggan</span>
+                <h1 style="font-size: 26px; margin: 2px 0; font-weight: 800;">${t.member.name.toUpperCase()}</h1>
+                <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+                    Nota: <b>${t.invoice}</b> &bull; ${tgl}
+                </div>
+            </div>
+
+            <table style="width: 100%; font-size: 14px; border-collapse: collapse; margin-bottom: 15px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #F1F5F9;">
+                        <th style="text-align: left; padding: 6px 0; color: #64748B; font-size: 11px;">RINCIAN</th>
+                        <th style="text-align: right; padding: 6px 0; color: #64748B; font-size: 11px;">SUBTOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${t.items.map(i => `
+                        <tr style="border-bottom: 1px solid #F8FAFC;">
+                            <td style="padding: 8px 0;">
+                                <div style="font-weight: 700; font-size: 14px; margin-bottom: 2px;">${i.serviceName}</div>
+                                <div style="font-size: 12px; color: #64748B;">
+                                    ${i.qty} ${i.unit} &times; ${formatIDR(i.price)}
+                                </div>
+                            </td>
+                            <td style="text-align: right; font-weight: 700; font-size: 14px; vertical-align: middle;">
+                                ${formatIDR(i.subtotal)}
+                            </td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>
+
+            <div style="background: #F8FAFC; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #F1F5F9;">
+                <span style="font-weight: 700; font-size: 13px; color: #64748B;">TOTAL TAGIHAN</span>
+                <span style="font-weight: 800; font-size: 20px; color: #0EA5E9;">${formatIDR(t.totalPrice)}</span>
+            </div>
+
+            <div style="text-align: center; margin-top: 25px;">
+                <div style="display: inline-block; border: 3px solid ${statusColor}; color: ${statusColor}; padding: 6px 20px; font-weight: 900; border-radius: 10px; transform: rotate(-3deg); text-transform: uppercase; font-size: 18px; letter-spacing: 2px;">
+                    ${t.status}
+                </div>
+                <p style="font-size: 11px; color: #94A3B8; margin-top: 20px; font-style: italic;">
+                    "Terima kasih telah mempercayakan cucian Anda kepada kami"
+                </p>
+            </div>
+        </div>
+    `;
+    openModal('invoice');
+}
+
+
+                async function updateTxStatus() {
+            askConfirm("Ubah Status", "Ubah transaksi ini menjadi LUNAS?", async () => {
+                await db.collection('transactions').doc(app.currentTx.id).update({ status: 'LUNAS' });
+                closeModal();
+                showMessage("Status diperbarui");
+            });
+        }
+
+async function deleteTx() {
+    // 1. Validasi: Pastikan ada transaksi yang dipilih
+    if (!app.currentTx || !app.currentTx.id) {
+        showMessage("Gagal: ID Transaksi tidak ditemukan.");
+        return;
+    }
+
+    const idHapus = app.currentTx.id;
+    const invHapus = app.currentTx.invoice;
+
+    // 2. Jalankan konfirmasi pro (Tanpa Alert Browser)
+    askConfirm(
+        "Hapus Transaksi", 
+        `Hapus nota ${invHapus} secara permanen dari database?`, 
+        async () => {
+            try {
+                // 3. Eksekusi Hapus ke Firebase - Ini koneksi langsungnya
+                await db.collection('transactions').doc(idHapus).delete();
+                
+                // 4. Cleanup UI setelah berhasil
+                closeModal(); // Tutup modal konfirmasi
+                document.getElementById('modal-invoice').classList.remove('active'); // Tutup modal invoice
+                
+                app.currentTx = null; // Kosongkan data aktif
+                showMessage(`Nota ${invHapus} berhasil dihapus!`);
+                
+                // 5. Refresh data yang tampil di layar
+                if(typeof renderHome === 'function') renderHome();
+                if(typeof renderHistory === 'function') renderHistory();
+
+            } catch (error) {
+                console.error("Error Firebase:", error);
+                showMessage("Gagal menghapus dari server: " + error.message);
+            }
+        }
+    );
+}
+
+        function downloadJPG() {
+    const area = document.getElementById('invoice-capture-area');
+    
+    // Scale Up gambar HD
+    html2canvas(area, {
+        scale: 8, 
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#FFFFFF"
+    }).then(canvas => {
+        const l = document.createElement('a');
+        l.download = `Nota-${app.currentTx.invoice}.jpg`;
+        l.href = canvas.toDataURL("image/jpeg", 0.9); // Kualitas 90%
+        l.click();
+    });
+}
+
+
+        function shareWA() {
+    const t = app.currentTx;
+    if (!t) return;
+
+    // Format tanggal untuk pesan (DD/MM/YYYY)
+    const dateObj = t.createdAt ? t.createdAt.toDate() : new Date();
+    const formattedDate = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+
+    // Menyusun daftar layanan (item)
+    const itemDetails = t.items.map(i => `- ${i.serviceName} (${i.qty}${i.unit})`).join('\n');
+
+    // Template Pesan Rapih
+    const msg = 
+`Halo Kak *${t.member.name}*,
+
+Terima kasih telah mencuci di *${app.settings.name}*. Berikut rincian layanan yang dipesan :
+
+🧾 Invoice: *${t.invoice}*
+🗓️ Tgl: ${formattedDate}
+👔 Layanan:
+${itemDetails}
+💰 Total: *${formatIDR(t.totalPrice)}*
+🏷️ Status: *${t.status}*
+
+*Terima Kasih!* 🙏`;
+
+    // Kirim via WhatsApp
+    window.open(`https://wa.me/${t.member.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+
+        // SETTINGS & PREVIEWS
+        function applySettings() {
+            document.getElementById('header-brand-name').innerText = app.settings.name;
+            document.getElementById('st-name').value = app.settings.name;
+            document.getElementById('st-address').value = app.settings.address;
+            document.getElementById('st-phone').value = app.settings.phone;
+        }
+
+        function updateSettingPreview() {
+    const name = document.getElementById('st-name').value || "Suka Laundry";
+    const addr = document.getElementById('st-address').value || "Alamat Toko";
+    const phone = document.getElementById('st-phone').value || "08xxxx";
+    const statusColor = '#10B981'; // Simulasi warna lunas untuk preview
+
+    document.getElementById('setting-print-preview').innerHTML = `
+        <div style="width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.1; color: #0F172A; text-align: left; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <div style="text-align: center; border-bottom: 2px dashed #eee; padding-bottom: 8px; margin-bottom: 10px;">
+                <h2 style="font-size: 16px; margin: 0; font-weight: 800;">${name}</h2>
+                <p style="font-size: 10px; color: #64748B; margin: 4px 0 0 0;">${addr}<br>WA: ${phone}</p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 10px;">
+                <h1 style="font-size: 18px; margin: 2px 0; font-weight: 800;">RONALDO</h1>
+                <div style="font-size: 9px; color: #64748B;">
+                    Nota: <b>INV-SAMPLE</b> &bull; 01/01/2026
+                </div>
+            </div>
+
+            <table style="width: 100%; font-size: 11px; border-collapse: collapse; margin-bottom: 10px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #F1F5F9;">
+                        <th style="text-align: left; padding: 4px 0; color: #64748B;">RINCIAN</th>
+                        <th style="text-align: right; padding: 4px 0; color: #64748B;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid #F8FAFC;">
+                        <td style="padding: 6px 0;">
+                            <div style="font-weight: 700;">Cuci Kering</div>
+                            <div style="font-size: 9px; color: #64748B;">2 Kg &times; Rp 5.000</div>
+                        </td>
+                        <td style="text-align: right; font-weight: 700;">Rp 10.000</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="background: #F8FAFC; padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #F1F5F9;">
+                <span style="font-weight: 700; font-size: 10px; color: #64748B;">TOTAL</span>
+                <span style="font-weight: 800; font-size: 14px; color: #0EA5E9;">Rp 10.000</span>
+            </div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <div style="display: inline-block; border: 2px solid ${statusColor}; color: ${statusColor}; padding: 4px 12px; font-weight: 900; border-radius: 6px; transform: rotate(-3deg); text-transform: uppercase; font-size: 12px;">
+                    LUNAS
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+               // Fungsi Simpan Profil Toko
+        async function saveSettings() {
+            const data = { 
+                name: document.getElementById('st-name').value, 
+                address: document.getElementById('st-address').value, 
+                phone: document.getElementById('st-phone').value,
+                footer: "Terima Kasih"
+            };
+            try {
+                await db.collection('settings').doc('profile').set(data);
+                showMessage("Pengaturan Tersimpan");
+            } catch (e) {
+                showMessage("Gagal menyimpan pengaturan");
+            }
+        } // Tutup fungsi saveSettings
+
+        // Fungsi Reset Database
+        async function triggerResetDatabase() {
+            askConfirm("RESET DATABASE", "Hapus SEMUA transaksi secara permanen? Tindakan ini tidak bisa dibatalkan.", async () => {
+                try {
+                    const batch = db.batch();
+                    const snapshot = await db.collection('transactions').where('appId', '==', APP_ID).get();
+                    
+                    if (snapshot.empty) {
+                        showMessage("Tidak ada data untuk dihapus");
+                        return;
+                    }
+
+                    snapshot.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+
+                    await batch.commit();
+                    showMessage("Seluruh riwayat transaksi berhasil dihapus");
+                } catch (e) {
+                    console.error(e);
+                    showMessage("Gagal membersihkan database");
+                }
+            });
+        } // Tutup fungsi triggerResetDatabase
+
+        // RENDERERS UI
+        function updateDropdowns() {
+            const ref = document.getElementById('ref-list');
+            const pos = document.getElementById('pos-member-id');
+            ref.innerHTML = app.members.map(m => `<option value="${m.refSelf || m.name.toUpperCase()}">`).join('');
+            pos.innerHTML = '<option value="">-- Pilih Member --</option>' + app.members.map(m => `<option value="${m.id}">${m.name} (${m.whatsapp})</option>`).join('');
+        }
+
+        function updatePOSGrid() {
+            document.getElementById('pos-services-grid').innerHTML = app.services.map(s => `
+                <div class="service-item" onclick="addToCart('${s.id}')">
+                    <i class="fas fa-tshirt"></i>
+                    <b>${s.name}</b>
+                    <span>${formatIDR(s.price)}/${s.unit}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderMembers() {
+            const search = document.getElementById('member-search').value.toLowerCase();
+            let data = app.members;
+            if(search) data = data.filter(m => m.name.toLowerCase().includes(search) || m.whatsapp.includes(search));
+
+            document.getElementById('member-list').innerHTML = data.map(m => `
+                <div class="list-item">
+                    <div><b>${m.name}</b><br><small>${m.whatsapp}</small></div>
+                    <div style="display:flex; gap:8px;">
+                       <button class="btn btn-outline" style="width:auto; padding:8px;" onclick="editMember('${m.id}')">
+    <i class="fas fa-edit"></i>
+</button>
+
+                        <button class="btn btn-danger-soft" style="width:auto; padding:8px;" onclick="deleteMember('${m.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderServices() {
+    document.getElementById('service-list').innerHTML = app.services.map(s => `
+        <div class="list-item">
+            <div><b>${s.name}</b><br><small>${formatIDR(s.price)}/${s.unit}</small></div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-outline" style="width:auto; padding:8px;" onclick="openEditService('${s.id}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger-soft" style="width:auto; padding:8px;" onclick="deleteService('${s.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+
+// --- 1. FUNGSI UTILITAS DASAR ---
+function getDeviceId() {
+    let id = localStorage.getItem('heikasir_ksr_id');
+    if (!id) {
+        id = 'KSR-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+        localStorage.setItem('heikasir_ksr_id', id);
+    }
+    return id;
+}
+
+function cekNomerAdmin(el) {
+    if (el.value.startsWith('0')) {
+        showMessage("Jangan gunakan angka 0 di awal!");
+        el.value = "";
+    }
+}
+
+// Menentukan mode awal aplikasi (login)
+let authMode = 'login'; 
+
+function toggleAuthMode(mode) {
+    authMode = mode; // Menyimpan status apakah user sedang mau 'login' atau 'reg' (daftar)
+    
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('btn-auth');
+    const switchText = document.getElementById('auth-switch');
+
+    if (mode === 'reg') {
+        title.innerText = "Registrasi Kasir";
+        btn.innerText = "DAFTAR SEKARANG";
+        switchText.innerHTML = `Sudah punya akun? <a href="javascript:void(0)" onclick="toggleAuthMode('login')" style="color:var(--primary); font-weight:800; text-decoration:none;">Login Saja</a>`;
+    } else {
+        title.innerText = "Masuk Kasir";
+        btn.innerText = "MASUK KASIR";
+        switchText.innerHTML = `Belum punya akun? <a href="javascript:void(0)" onclick="toggleAuthMode('reg')" style="color:var(--primary); font-weight:800; text-decoration:none;">Daftar Baru</a>`;
+    }
+}
+
+
+// --- 2. SISTEM LOGIN & REGISTRASI (TARUH DI SINI) ---
+async function prosesAuth() {
+    const name = document.getElementById('reg-name').value.trim();
+    let phoneInput = document.getElementById('reg-phone').value.trim();
+    
+    if(!name || !phoneInput) return showMessage("Lengkapi Nama & WA!");
+    
+    const fullPhone = "+62" + phoneInput;
+    const btn = document.getElementById('btn-auth');
+    btn.disabled = true; 
+    btn.innerText = "Memverifikasi...";
+
+    try {
+        const snap = await db.collection('authorized_devices').get();
+        let myAcc = null;
+        
+        snap.forEach(doc => { 
+            const d = doc.data();
+            if(d.ownerName === name && d.phone === fullPhone) {
+                myAcc = d;
+            }
+        });
+
+        if (authMode === 'reg') {
+            const trial = new Date().getTime() + (3 * 86400000);
+            await mendaftarkanHP(name, fullPhone, trial, 'trial');
+        } else {
+            if (myAcc) {
+                await mendaftarkanHP(name, fullPhone, myAcc.expiry, myAcc.status);
+            } else {
+                showMessage("Akun tidak ditemukan!");
+                btn.disabled = false;
+                btn.innerText = "MASUK KASIR";
+            }
+        }
+    } catch (e) { 
+        showMessage("Koneksi Error!");
+        btn.disabled = false;
+        btn.innerText = "COBA LAGI";
+    }
+}
+
+async function mendaftarkanHP(name, phone, expiry, status) {
+    const id = getDeviceId();
+    await db.collection('authorized_devices').doc(id).set({
+        ownerName: name, 
+        phone: phone, 
+        status: status, 
+        expiry: expiry,
+        appType: 'kasir', 
+        remoteNotif: false, 
+        createdAt: new Date().getTime()
+    });
+    localStorage.setItem('heikasir_owner', name);
+    location.reload();
+}
+
+
+// --- 3. LOGIKA UTAMA SAAT APLIKASI DIBUKA ---
+window.onload = async () => {
+    const MY_ID = getDeviceId();
+    const savedName = localStorage.getItem('heikasir_owner');
+    
+    // Sembunyikan body dulu untuk pengecekan keamanan
+    document.body.style.display = "none"; 
+
+    // Cek apakah sudah pernah login
+    if (!savedName) {
+        document.body.style.display = "block";
+        document.getElementById('p-login').style.display = "flex";
+        return;
+    }
+
+    // Pantau status lisensi dari Master secara Real-time
+    db.collection('authorized_devices').doc(MY_ID).onSnapshot(doc => {
+        const now = new Date();
+        const currentTime = now.getTime();
+        
+        if (!doc.exists) { 
+            localStorage.clear(); 
+            location.reload(); 
+            return; 
+        }
+        
+        const d = doc.data();
+        
+               // --- LOGIKA GEMBOK IDENTIK ADMIN (ANTI-TEMBUS) ---
+        if (currentTime > d.expiry && d.status !== 'lifetime') {
+            document.body.style.display = "block";
+            document.body.innerHTML = `
+                <div style="position:fixed; inset:0; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; background:#F8FAFC; font-family:sans-serif;">
+                    <div style="position:relative; display:inline-block; margin-bottom:20px;">
+                        <i class="fas fa-lock" style="font-size:4rem; color:#EF4444;"></i>
+                        <button onclick="location.reload()" class="btn-refresh-lock">
+                            <i class="fas fa-sync-alt" style="font-size:1.2rem;"></i>
+                        </button>
+                    </div>
+                    <h2 style="font-weight:900; color:#1E293B; margin-top:10px;">AKSES TERKUNCI</h2>
+                    <p style="color:#64748B; margin-bottom:30px; line-height:1.5;">
+                        Bisnis: <b style="color:#1E293B;">${d.ownerName}</b><br>
+                        Masa aktif lisensi Anda telah habis.
+                    </p>
+                    <a href="https://wa.me/6283830890860?text=Halo%20Azzam,%20Aktivasi%20bisnis%20${d.ownerName}%20ID:%20${MY_ID}" 
+                       style="background:#0EA5E9; color:white; padding:18px 32px; border-radius:18px; text-decoration:none; font-weight:800; display:flex; align-items:center; gap:12px; box-shadow:0 8px 20px rgba(14,165,233,0.3);">
+                       <i class="fab fa-whatsapp" style="font-size:1.4rem;"></i> HUBUNGI AZZAM
+                    </a>
+                    <p style="margin-top:25px; font-size:0.75rem; color:#94A3B8; font-weight:600; text-transform:uppercase; letter-spacing:1px;">
+                        Klik Tombol Refresh Pada Gembok
+                    </p>
+                </div>`;
+            return;
+        }
+
+        // --- REMOTE NOTIF SYNC ---
+        if (d.remoteNotif === true && localStorage.getItem('notif_closed_day') !== now.toDateString()) {
+            document.getElementById('remote-notif-overlay').classList.add('active');
+            document.getElementById('remote-notif-msg').innerText = "Pesan Owner: Mohon segera lakukan perpanjangan lisensi agar operasional tetap lancar.";
+        } else {
+            document.getElementById('remote-notif-overlay').classList.remove('active');
+        }
+
+        // Tampilkan aplikasi jika semua OK
+        document.body.style.display = "block";
+        
+        if(!window.isAppInit) {
+            // Setup Dropdown Tahun & Bulan (Wajib agar Riwayat Jalan)
+            const yearSelect = document.getElementById('hist-year');
+            const currentYear = now.getFullYear();
+            if(yearSelect) {
+                yearSelect.innerHTML = "";
+                for(let y = currentYear - 2; y <= currentYear + 10; y++) {
+                    const opt = new Option(y, y);
+                    if(y === currentYear) opt.selected = true;
+                    yearSelect.add(opt);
+                }
+            }
+            const monthSelect = document.getElementById('hist-month');
+            if(monthSelect) monthSelect.value = now.getMonth().toString();
+
+            // Inisialisasi Data Aplikasi
+            initSync();
+            updateSettingPreview();
+            window.isAppInit = true;
+        }
+    });
+};
+
+</script>
+</body>
+</html>
