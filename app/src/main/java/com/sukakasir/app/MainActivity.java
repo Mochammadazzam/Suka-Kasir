@@ -1,7 +1,6 @@
 package com.sukakasir.app;
 
 import android.Manifest;
-import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -11,8 +10,8 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.util.Base64;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
-import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -40,51 +39,48 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview_compontent);
         WebSettings settings = webView.getSettings();
         
-        // Fitur Dasar & Database
+        // --- BUKA AKSES TOTAL (Agar HTML tidak perlu diubah) ---
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
-
-        // Anti View Source / Anti Klik Kanan
+        settings.setAllowContentAccess(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        
+        // Anti Decompile: Matikan Klik Kanan / Tahan
         webView.setOnLongClickListener(v -> true);
         webView.setLongClickable(false);
 
-        // Bridge Java ke JavaScript
-        webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
-
-        // Penanganan URL (Termasuk WhatsApp)
+        // --- HANDLING WHATSAPP & LINK LUAR ---
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                
-                // Jika URL mengandung WhatsApp (wa.me atau api.whatsapp)
                 if (url.startsWith("whatsapp:") || url.contains("wa.me") || url.contains("api.whatsapp")) {
                     try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        startActivity(intent);
-                        return true; // Berhasil ditangani Java
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                        return true;
                     } catch (Exception e) {
-                        Toast.makeText(MainActivity.this, "WhatsApp tidak terinstal", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "WhatsApp tidak ditemukan", Toast.LENGTH_SHORT).show();
                         return true;
                     }
                 }
-                return false; // Biarkan WebView buka URL biasa
+                return false; 
             }
         });
 
-        // Penanganan Izin Bluetooth di WebView
+        // --- HANDLING BLUETOOTH POP-UP & HARDWARE PERMISSION ---
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
+                // Memberikan izin otomatis saat navigator.bluetooth dipanggil di HTML
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    request.grant(request.getResources());
+                    runOnUiThread(() -> request.grant(request.getResources()));
                 }
             }
         });
 
-        // Penanganan Simpan Gambar (html2canvas)
+        // --- HANDLING DOWNLOAD JPG (HTML2CANVAS) ---
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (url.startsWith("data:")) {
                 simpanBase64(url, mimetype);
@@ -99,40 +95,35 @@ public class MainActivity extends AppCompatActivity {
             String base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
             byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
             String ext = mimeType.contains("csv") ? ".csv" : ".jpg";
-            String name = "Nota_Kasir_" + System.currentTimeMillis() + ext;
+            String name = "Nota_" + System.currentTimeMillis() + ext;
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File file = new File(path, name);
             OutputStream os = new FileOutputStream(file);
             os.write(fileBytes);
             os.close();
-            Toast.makeText(this, "Nota disimpan di folder Download", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Nota Tersimpan di Download", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "Gagal simpan nota", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    public class WebAppInterface {
-        @JavascriptInterface
-        public void checkBluetooth() {
-            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-            if (adapter != null && !adapter.isEnabled()) {
-                Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                    startActivity(intent);
-                }
-            }
+            Toast.makeText(this, "Gagal simpan file", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void mintaIzinSistem() {
         String[] perms;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            perms = new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION};
+            perms = new String[]{
+                Manifest.permission.BLUETOOTH_SCAN, 
+                Manifest.permission.BLUETOOTH_CONNECT, 
+                Manifest.permission.ACCESS_FINE_LOCATION
+            };
         } else {
-            perms = new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION};
+            perms = new String[]{
+                Manifest.permission.BLUETOOTH, 
+                Manifest.permission.BLUETOOTH_ADMIN, 
+                Manifest.permission.ACCESS_FINE_LOCATION
+            };
         }
         ActivityCompat.requestPermissions(this, perms, 1);
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 Intent it = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
