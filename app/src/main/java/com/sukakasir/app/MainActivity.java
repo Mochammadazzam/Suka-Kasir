@@ -16,13 +16,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
-// Import R secara manual untuk mengatasi error "package R does not exist"
 import com.sukakasir.app.R;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -38,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        mintaSemuaIzin();
+        mintaIzinSistem();
 
         webView = findViewById(R.id.webview_compontent);
         WebSettings settings = webView.getSettings();
@@ -47,26 +43,11 @@ public class MainActivity extends AppCompatActivity {
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setDatabaseEnabled(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
+        // Bridge Java ke JavaScript
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidInterface");
 
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url.startsWith("whatsapp:") || url.contains("wa.me")) {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                        return true;
-                    } catch (Exception e) {
-                        Toast.makeText(MainActivity.this, "WhatsApp tidak terpasang", Toast.LENGTH_SHORT).show();
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
-
+        // FIX: Agar daftar Bluetooth muncul (OnPermissionRequest)
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
@@ -76,9 +57,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("whatsapp:") || url.contains("wa.me")) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                        return true;
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this, "WA tidak ditemukan", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (url.startsWith("data:")) {
-                simpanKeFolderDownload(url);
+                simpanNota(url);
             }
         });
 
@@ -89,48 +86,40 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void turnOnBluetooth() {
             if (bluetoothAdapter != null && !bluetoothAdapter.isEnabled()) {
+                Intent it = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    startActivity(enableBtIntent);
+                    startActivity(it);
                 }
             }
         }
     }
 
-    private void simpanKeFolderDownload(String dataUrl) {
+    private void simpanNota(String dataUrl) {
         try {
             String base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
-            byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
-            String fileName = "Nota_" + System.currentTimeMillis() + ".jpg";
-            
+            byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File file = new File(path, fileName);
-            
+            File file = new File(path, "Nota_" + System.currentTimeMillis() + ".jpg");
             OutputStream os = new FileOutputStream(file);
-            os.write(fileBytes);
+            os.write(bytes);
             os.close();
-            
-            Toast.makeText(this, "Nota tersimpan di Download", Toast.LENGTH_LONG).show();
-            
-            Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intent.setData(Uri.fromFile(file));
-            sendBroadcast(intent);
+            Toast.makeText(this, "Nota disimpan di Download", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "Gagal simpan file", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Gagal simpan", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void mintaSemuaIzin() {
+    private void mintaIzinSistem() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN, 
+                Manifest.permission.BLUETOOTH_CONNECT, 
                 Manifest.permission.ACCESS_FINE_LOCATION
-            }, 101);
+            }, 1);
         } else {
             ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.ACCESS_FINE_LOCATION
-            }, 101);
+            }, 1);
         }
     }
 }
