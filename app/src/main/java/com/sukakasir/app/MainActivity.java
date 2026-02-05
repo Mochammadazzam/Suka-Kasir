@@ -10,7 +10,6 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.util.Base64;
 import android.view.View;
-import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -39,20 +38,26 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview_compontent);
         WebSettings settings = webView.getSettings();
         
-        // --- BUKA AKSES TOTAL (Agar HTML tidak perlu diubah) ---
+        // --- POWER SETTINGS (Fix Login & Database) ---
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
+        settings.setDomStorageEnabled(true); 
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        // Anti Decompile: Matikan Klik Kanan / Tahan
+        // --- SECURITY (Anti View Source) ---
         webView.setOnLongClickListener(v -> true);
         webView.setLongClickable(false);
 
-        // --- HANDLING WHATSAPP & LINK LUAR ---
+        // --- CLIENT SETTINGS ---
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                // Memastikan inisialisasi DOM sudah siap sebelum interaksi
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -69,18 +74,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // --- HANDLING BLUETOOTH POP-UP & HARDWARE PERMISSION ---
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                // Memberikan izin otomatis saat navigator.bluetooth dipanggil di HTML
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     runOnUiThread(() -> request.grant(request.getResources()));
                 }
             }
         });
 
-        // --- HANDLING DOWNLOAD JPG (HTML2CANVAS) ---
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (url.startsWith("data:")) {
                 simpanBase64(url, mimetype);
@@ -101,35 +103,31 @@ public class MainActivity extends AppCompatActivity {
             OutputStream os = new FileOutputStream(file);
             os.write(fileBytes);
             os.close();
-            Toast.makeText(this, "Nota Tersimpan di Download", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Berhasil simpan ke Download", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, "Gagal simpan file", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void mintaIzinSistem() {
-        String[] perms;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            perms = new String[]{
+            ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.BLUETOOTH_SCAN, 
                 Manifest.permission.BLUETOOTH_CONNECT, 
                 Manifest.permission.ACCESS_FINE_LOCATION
-            };
+            }, 1);
         } else {
-            perms = new String[]{
+            ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.BLUETOOTH, 
                 Manifest.permission.BLUETOOTH_ADMIN, 
                 Manifest.permission.ACCESS_FINE_LOCATION
-            };
+            }, 1);
         }
-        ActivityCompat.requestPermissions(this, perms, 1);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                Intent it = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                it.setData(Uri.parse("package:" + getPackageName()));
-                startActivity(it);
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            Intent it = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            it.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(it);
         }
     }
 }
