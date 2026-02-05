@@ -1,15 +1,16 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    // KUNCI: Harus sama dengan struktur folder dan baris package di Java
+    // Identitas aplikasi, pastikan folder di GitHub: app/src/main/java/com/sukakasir/app/
     namespace "com.sukakasir.app"
-    compileSdkVersion 34
+    compileSdk 34
 
     defaultConfig {
-        // ID unik agar tidak menimpa aplikasi Suka Admin
         applicationId "com.sukakasir.app"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -18,7 +19,15 @@ android {
 
     buildTypes {
         release {
+            // AKTIFKAN PROTEKSI ANTI-DECOMPILE (Obfuscation)
             minifyEnabled true
+            // Menghapus resource yang tidak terpakai agar APK lebih kecil
+            shrinkResources true
+            // File aturan untuk mengacak kode
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -27,10 +36,23 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // Menangani bentrok library jika ada
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.webkit:webkit:1.9.0'
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
