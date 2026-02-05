@@ -34,23 +34,25 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        
+        // Langsung minta izin saat aplikasi dibuka pertama kali
         mintaIzinSistem();
 
-        // ID harus 'webview_compontent' sesuai kodingan kita sebelumnya
         webView = findViewById(R.id.webview_compontent);
         WebSettings settings = webView.getSettings();
         
-        // --- POWER SETTINGS ---
+        // --- KONFIGURASI WEBVIEW (Fix Login & Fitur) ---
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true); // Wajib untuk Firebase Login
+        settings.setDomStorageEnabled(true); 
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setDatabaseEnabled(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        // --- BRIDGE: HTML memanggil AndroidInterface.turnOnBluetooth() ---
+        // Bridge untuk turnOnBluetooth()
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidInterface");
 
-        // --- HANDLING REDIRECT (WA & URL) ---
+        // Client untuk handle link luar (WhatsApp)
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -67,60 +69,57 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // --- HANDLING PERMISSION (Bluetooth Web API) ---
+        // --- KUNCI FIX BLUETOOTH (MEMBUKA IZIN SCAN) ---
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    // Ini memaksa sistem memberikan daftar perangkat Bluetooth ke HTML
                     runOnUiThread(() -> request.grant(request.getResources()));
                 }
             }
         });
 
-        // --- HANDLING DOWNLOAD (Nota JPG) ---
+        // Fitur simpan nota JPG
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (url.startsWith("data:")) {
-                simpanNotaKeFolderDownload(url, mimetype);
+                simpanNotaJPG(url);
             }
         });
 
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    // Jembatan Java - JavaScript
     public class WebAppInterface {
         @JavascriptInterface
         public void turnOnBluetooth() {
             if (bluetoothAdapter == null) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Device tidak support Bluetooth", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Perangkat tidak mendukung Bluetooth", Toast.LENGTH_SHORT).show());
             } else if (!bluetoothAdapter.isEnabled()) {
-                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                Intent it = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    startActivity(enableBtIntent);
+                    startActivity(it);
                 }
             }
         }
     }
 
-    private void simpanNotaKeFolderDownload(String dataUrl, String mimeType) {
+    private void simpanNotaJPG(String dataUrl) {
         try {
             String base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
             byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
-            String fileName = "Nota_Laundry_" + System.currentTimeMillis() + ".jpg";
-            
+            String fileName = "Nota_" + System.currentTimeMillis() + ".jpg";
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File file = new File(path, fileName);
-            
             OutputStream os = new FileOutputStream(file);
             os.write(fileBytes);
             os.close();
+            Toast.makeText(this, "Nota disimpan di folder Download", Toast.LENGTH_LONG).show();
             
-            Toast.makeText(this, "Nota Tersimpan di Download", Toast.LENGTH_LONG).show();
-            
-            // Scan agar file langsung muncul di Gallery/File Manager
-            Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            scanIntent.setData(Uri.fromFile(file));
-            sendBroadcast(scanIntent);
+            // Scan media agar muncul di galeri
+            Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            intent.setData(Uri.fromFile(file));
+            sendBroadcast(intent);
         } catch (Exception e) {
             Toast.makeText(this, "Gagal simpan nota", Toast.LENGTH_SHORT).show();
         }
@@ -136,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.BLUETOOTH, 
+                Manifest.permission.BLUETOOTH_ADMIN, 
                 Manifest.permission.ACCESS_FINE_LOCATION
             }, 1);
         }
