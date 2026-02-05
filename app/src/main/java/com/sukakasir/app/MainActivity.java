@@ -6,9 +6,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.Settings;
-import android.util.Base64;
+import android.bluetooth.BluetoothAdapter;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -18,37 +17,35 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
 
 public class MainActivity extends AppCompatActivity {
-
-    private WebView webView;
+    private WebView myWebView;
+    private BluetoothAdapter bluetoothAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Langsung minta izin saat aplikasi dibuka
         mintaIzinSistem();
 
-        webView = findViewById(R.id.webview_compontent);
-        WebSettings settings = webView.getSettings();
-        
-        // --- SETTINGAN AGAR BLUETOOTH JALAN ---
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        
-        // Buka blokir konten campuran (sering bikin Bluetooth gagal)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
+        myWebView = findViewById(R.id.webview_compontent);
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        webView.setWebViewClient(new WebViewClient() {
+        WebSettings settings = myWebView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true); // Fix Login Pop-up
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+
+        // Proteksi: Matikan klik kanan / tahan (Anti View Source)
+        myWebView.setOnLongClickListener(v -> true);
+        myWebView.setLongClickable(false);
+
+        // Jembatan: Panggil di JS pakai AndroidInterface.turnOnBluetooth()
+        myWebView.addJavascriptInterface(new WebAppInterface(), "AndroidInterface");
+
+        myWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -56,42 +53,51 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
                         return true;
-                    } catch (Exception e) {
-                        return false;
-                    }
+                    } catch (Exception e) { return false; }
                 }
-                return false; 
+                return false;
             }
         });
 
-        // --- INI KUNCI FIX BLUETOOTH ---
-        webView.setWebChromeClient(new WebChromeClient() {
+        myWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    // Memaksa WebView memberikan izin kamera/bluetooth/lokasi ke HTML
-                    runOnUiThread(() -> request.grant(request.getResources()));
+                    request.grant(request.getResources());
                 }
             }
         });
 
-        // Load HTML kamu
-        webView.loadUrl("file:///android_asset/index.html");
+        myWebView.loadUrl("file:///android_asset/index.html");
+    }
+
+    public class WebAppInterface {
+        @JavascriptInterface
+        public void turnOnBluetooth() {
+            if (bluetoothAdapter == null) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "HP tidak support Bluetooth", Toast.LENGTH_SHORT).show());
+            } else {
+                if (!bluetoothAdapter.isEnabled()) {
+                    // Cara resmi Android terbaru untuk minta nyalakan BT
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                        startActivity(enableBtIntent);
+                    }
+                } else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Bluetooth Sudah Aktif & Siap Print", Toast.LENGTH_SHORT).show());
+                }
+            }
+        }
     }
 
     private void mintaIzinSistem() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.BLUETOOTH_SCAN, 
-                Manifest.permission.BLUETOOTH_CONNECT, 
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION
             }, 1);
         } else {
             ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.BLUETOOTH, 
-                Manifest.permission.BLUETOOTH_ADMIN, 
-                Manifest.permission.ACCESS_FINE_LOCATION
+                Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION
             }, 1);
         }
     }
