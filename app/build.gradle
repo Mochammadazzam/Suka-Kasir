@@ -2,14 +2,16 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.sukakasir.app"
-    compileSdkVersion 34
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.sukakasir.app"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -23,10 +25,22 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // Memastikan WebView dan resource terikat dengan benar
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {
+    // Library Utama UI
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // Library Tambahan untuk Permission (Penting untuk Bluetooth & Storage)
+    implementation 'androidx.core:core:1.12.0'
+    
+    // Opsional: Untuk membantu proses download/input di WebView
+    implementation 'androidx.webkit:webkit:1.8.0'
 }
