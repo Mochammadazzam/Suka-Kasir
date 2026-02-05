@@ -16,8 +16,17 @@
 
     <style>
         
+        * { 
+    -webkit-user-select: none; 
+    user-select: none; 
+}
+input, textarea { 
+    -webkit-user-select: text; 
+    user-select: text; 
+}
+        
         /* CSS UNTUK LOGIN & GEMBOK */
-.modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(5px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
 .modal-bg.active { display: flex; }
 .btn-auth-full { width: 100%; padding: 16px; border-radius: 18px; border: none; background: var(--primary); color: white; font-weight: 800; cursor: pointer; font-size: 0.9rem; transition: 0.3s; }
 .btn-auth-full:active { transform: scale(0.98); opacity: 0.9; }
@@ -99,7 +108,7 @@
         .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-bg.active { display: flex; }
         #modal-confirm {
-    z-index: 3000 !important;
+    z-index: 1000 !important;
 }
         .modal { background: var(--surface); width: 100%; border-radius: 25px; padding: 25px; max-height: 90vh; overflow-y: auto; }
 
@@ -175,7 +184,13 @@
     border-top: 1px solid #e2e8f0;
 }
 
+#notification {
+        z-index: 9999;
+    }
 
+    input:focus, select:focus {
+        z-index: 5;
+    }
     </style>
 </head>
 <body>
@@ -509,26 +524,41 @@
         };
 
         // BLUETOOTH PRINTER LOGIC
-        async function btConnect() {
-        if (window.AndroidInterface) {
+       async function btConnect() {
+    // 1. Panggil Java Bridge
+    if (window.AndroidInterface) {
         window.AndroidInterface.turnOnBluetooth();
     }
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }],
-                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
-                });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-                app.printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-                app.printDevice = device;
-                document.getElementById('btn-printer').style.color = 'var(--success)';
-                showMessage("Printer Terhubung!");
-            } catch (e) {
-                console.error(e);
-                showMessage("Koneksi Gagal/Dibatalkan");
-            }
-        }
+
+    // 2. Tutup modal yang mungkin sedang terbuka agar tidak menutupi layar
+    // Ini sering jadi penyebab dialog scanning "tersembunyi" di bawah modal
+    closeModal(); 
+
+    if (!navigator.bluetooth) {
+        showMessage("Bluetooth diblokir sistem. Cek Izin & GPS!");
+        return;
+    }
+
+    try {
+        showMessage("Membuka daftar perangkat...");
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true, 
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] 
+        });
+        
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+        app.printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+        app.printDevice = device;
+        
+        document.getElementById('btn-printer').style.color = 'var(--success)';
+        showMessage("Printer Terhubung: " + device.name);
+    } catch (e) {
+        console.error(e);
+        if(e.name !== 'NotFoundError') showMessage("Koneksi Gagal/Dibatalkan");
+    }
+}
+
 
         async function printThermal(text) {
             if (!app.printCharacteristic) return showMessage("Printer belum terhubung!");
@@ -1256,22 +1286,21 @@ async function deleteTx() {
     );
 }
 
-        function downloadJPG() {
+ function downloadJPG() {
     const area = document.getElementById('invoice-capture-area');
-    
-    // Scale Up gambar HD
     html2canvas(area, {
-        scale: 8, 
+        scale: 3, // Ubah dari 8 ke 3 agar HP gak berat
         useCORS: true,
         logging: false,
         backgroundColor: "#FFFFFF"
     }).then(canvas => {
         const l = document.createElement('a');
         l.download = `Nota-${app.currentTx.invoice}.jpg`;
-        l.href = canvas.toDataURL("image/jpeg", 0.9); // Kualitas 90%
-        l.click();
+        l.href = canvas.toDataURL("image/jpeg", 0.9);
+        l.click(); // Ini akan ditangkap oleh DownloadListener di Java
     });
 }
+
 
 
         function shareWA() {
@@ -1647,5 +1676,3 @@ window.onload = async () => {
 </script>
 </body>
 </html>
-
-
