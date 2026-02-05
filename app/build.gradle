@@ -14,7 +14,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true // Mengaktifkan pengecilan kode
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -24,6 +24,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // Solusi agar tidak terjadi duplikasi class Kotlin yang bikin instalasi lama
     configurations.all {
         resolutionStrategy.eachDependency { details ->
             if (details.requested.group == 'org.jetbrains.kotlin') {
@@ -34,9 +35,8 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    // Hanya gunakan library yang benar-benar diperlukan untuk WebView & Simpan Gambar
+    implementation 'androidx.core:core:1.12.0'
     implementation 'androidx.webkit:webkit:1.8.0'
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }
