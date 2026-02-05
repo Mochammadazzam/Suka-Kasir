@@ -1,12 +1,11 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     repositories {
-        google()            // Google harus di atas
-        mavenCentral()      // Pengganti jcenter() yang sudah pensiun
+        google()
+        mavenCentral()
     }
     dependencies {
-        // Update ke versi yang mendukung targetSdk 34
-        classpath 'com.android.tools.build:gradle:8.2.0'
+        // Plugin Android Gradle untuk versi 8.2
+        classpath 'com.android.tools.build:gradle:8.1.1'
     }
 }
 
