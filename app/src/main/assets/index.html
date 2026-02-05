@@ -508,113 +508,88 @@
             printDevice: null, printCharacteristic: null, memberSpecificFilter: null
         };
 
-        // BLUETOOTH PRINTER LOGIC
-        async function btConnect() {
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }],
-                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
-                });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-                app.printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-                app.printDevice = device;
-                document.getElementById('btn-printer').style.color = 'var(--success)';
-                showMessage("Printer Terhubung!");
-            } catch (e) {
-                console.error(e);
-                showMessage("Koneksi Gagal/Dibatalkan");
-            }
-        }
+    // Variable global untuk menyimpan koneksi agar bisa dipakai fungsi cetak
+let deviceCache = null;
+let characteristicCache = null;
 
-        async function printThermal(text) {
-            if (!app.printCharacteristic) return showMessage("Printer belum terhubung!");
-            const encoder = new TextEncoder();
-            const chunks = text.match(/.{1,20}/g) || [];
-            for (const chunk of chunks) {
-                await app.printCharacteristic.writeValue(encoder.encode(chunk));
-            }
-        }
+async function btConnect() {
+    console.log("Memulai koneksi Bluetooth...");
 
-      async function printThermalInvoice() {
-    // 1. Validasi data dan koneksi
-    if (!app.currentTx || !app.printCharacteristic) {
-        return showMessage("Printer Belum Terhubung!");
+    // 1. Panggil Jembatan Java (AndroidBridge) 
+    // Untuk memastikan Bluetooth HP & Izin Lokasi sudah aktif
+    if (window.AndroidBridge) {
+        window.AndroidBridge.checkBluetooth();
+    }
+
+    // 2. Cek apakah Browser/WebView mendukung Web Bluetooth
+    if (!navigator.bluetooth) {
+        alert("Maaf, fitur Bluetooth tidak didukung di sistem ini. Pastikan izin 'Perangkat Sekitar' sudah aktif di pengaturan HP.");
+        return;
     }
 
     try {
-        const t = app.currentTx;
-        const enc = new TextEncoder();
-        
-        // Ambil data profil dari settings
-        const brand = (app.settings.name || 'Suka Laundry').toUpperCase();
-        const addr = app.settings.address || '';
-        const phone = app.settings.phone || '';
-
-        // ESC/POS Commands (Standard & Safe)
-        const init = '\x1B\x40';
-        const center = '\x1B\x61\x01';
-        const left = '\x1B\x61\x00';
-        const normalFont = '\x1B\x21\x00';
-        const boldOn = '\x1B\x45\x01';
-        const boldOff = '\x1B\x45\x00';
-
-        // Susun Text Struk
-        let txt = init + center + normalFont + brand + "\n";
-        if (addr) txt += addr + "\n";
-        if (phone) txt += "WA: " + phone + "\n";
-        txt += "--------------------------------\n" + left;
-        
-        // Info Transaksi
-        const tgl = t.createdAt ? t.createdAt.toDate().toLocaleDateString('id-ID') : '-';
-        txt += "Nota : " + t.invoice + "\n";
-        txt += "Tgl  : " + tgl + "\n";
-        txt += "Plg  : " + t.member.name.toUpperCase() + "\n";
-        txt += "--------------------------------\n";
-        
-        // Looping Items (Layanan)
-        t.items.forEach(i => {
-            let line1 = i.serviceName.substring(0, 32);
-            // Format: "1.0 Kg           Rp4.000" (Total 32 karakter)
-            let qtyStr = i.qty + " " + i.unit;
-            let priceStr = "Rp" + i.subtotal.toLocaleString('id-ID');
-            let spaces = 32 - qtyStr.length - priceStr.length;
-            let line2 = qtyStr + " ".repeat(spaces > 0 ? spaces : 1) + priceStr;
-            txt += line1.toUpperCase() + "\n" + line2 + "\n";
+        // 3. Request Device (Filter khusus printer thermal biasanya pakai service 18f0 atau generic_access)
+        // Jika ingin memunculkan semua perangkat, gunakan acceptAllDevices: true
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // UUID umum printer thermal
         });
+
+        console.log("Menghubungkan ke: " + device.name);
         
-        txt += "--------------------------------\n";
+        // Simpan ke cache
+        deviceCache = device;
+
+        // 4. Connect ke GATT Server
+        const server = await device.gatt.connect();
+
+        // 5. Ambil Service & Characteristic untuk menulis data (printing)
+        // Kita cari service printer (000018f0)
+        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
         
-        // Total (Rata Kanan)
-        let totalVal = "Rp " + t.totalPrice.toLocaleString('id-ID');
-        let totalLabel = "TOTAL:";
-        let totalSpaces = 32 - totalLabel.length - totalVal.length;
-        txt += boldOn + totalLabel + " ".repeat(totalSpaces > 0 ? totalSpaces : 1) + totalVal + boldOff + "\n";
-        
-        // Status & Catatan
-        txt += "Status: " + t.status + "\n";
-        if (t.note) {
-            txt += "Catatan: " + t.note + "\n";
+        // Ambil characteristic untuk Write data
+        characteristicCache = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+
+        if (window.AndroidBridge) {
+            window.AndroidBridge.toast("Terhubung ke " + device.name);
+        } else {
+            alert("Terhubung ke " + device.name);
         }
 
-        txt += "--------------------------------\n" + center;
-        txt += "Terima Kasih\n\n\n\n\n"; // Feed kertas agar bisa disobek
+        // Ubah warna tombol jadi hijau atau indikator aktif
+        document.getElementById('btnBT').style.backgroundColor = "#2ecc71";
+        document.getElementById('btnBT').innerText = "Printer Connected";
 
-        // 2. Proses Pengiriman Data (Metode Chunking sesuai referensi)
-        let data = enc.encode(txt);
-        const CHUNK_SIZE = 20;
+    } catch (error) {
+        console.error("Gagal koneksi: " + error);
         
-        for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-            let chunk = data.slice(i, i + CHUNK_SIZE);
-            await app.printCharacteristic.writeValue(chunk);
-            // Jeda 20ms agar printer tidak overload (sesuai referensi coding kamu)
-            await new Promise(r => setTimeout(r, 20));
+        // Jika user membatalkan pilihan (cancel popup)
+        if (error.name === 'NotFoundError') {
+            return; 
         }
-        
-        showMessage("Mencetak Struk...");
-    } catch (e) { 
-        console.error(e);
-        showMessage("Printer Error!"); 
+
+        if (window.AndroidBridge) {
+            window.AndroidBridge.toast("Koneksi gagal: " + error.message);
+        } else {
+            alert("Koneksi Gagal. Pastikan Bluetooth & GPS aktif.");
+        }
+    }
+}
+
+// FUNGSI TAMBAHAN: Untuk kirim data cetak (Dipanggil saat klik tombol Cetak)
+async function sendPrintData(dataUint8Array) {
+    if (!characteristicCache) {
+        alert("Printer belum terhubung!");
+        return;
+    }
+
+    try {
+        // Kirim data ke printer
+        await characteristicCache.writeValue(dataUint8Array);
+        console.log("Data berhasil dikirim ke printer");
+    } catch (error) {
+        console.error("Gagal cetak: " + error);
+        alert("Gagal mengirim data ke printer.");
     }
 }
 
