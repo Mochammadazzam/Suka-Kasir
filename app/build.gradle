@@ -1,15 +1,19 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.sukaadmin.app"
+    // KUNCI: Harus sama dengan struktur folder dan baris package di Java
+    namespace "com.sukakasir.app"
     compileSdkVersion 34
 
     defaultConfig {
-        applicationId "com.sukaadmin.app"
+        // ID unik agar tidak menimpa aplikasi Suka Admin
+        applicationId "com.sukakasir.app"
         minSdkVersion 21
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -17,6 +21,11 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
